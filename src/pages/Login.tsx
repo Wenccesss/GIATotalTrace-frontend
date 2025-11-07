@@ -11,7 +11,6 @@ import {
   Paper,
 } from '@mui/material';
 import { LockOutlined } from '@mui/icons-material';
-import { apiRequest } from '@/lib/queryClient';
 
 interface LoginProps {
   onLogin: () => void;
@@ -23,29 +22,19 @@ export default function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      const response = await apiRequest('POST', '/api/auth/login', {
-        username,
-        password,
-      });
-      
-      const data = await response.json();
-
-      if (data.success) {
-        onLogin();
-      } else {
-        setError(data.message || 'Usuario o contraseña incorrectos. Intenta nuevamente.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.');
-    } finally {
-      setLoading(false);
+    // Lógica de validación hardcodeada
+    if (username === 'admin' && password === 'GIATT') {
+      onLogin(); // acceso correcto
+    } else {
+      setError('Usuario o contraseña incorrectos. Intenta nuevamente.');
     }
+
+    setLoading(false);
   };
 
   return (
@@ -179,12 +168,6 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                   {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
                 </Button>
-
-                <Box sx={{ textAlign: 'center', marginTop: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Credenciales de prueba: admin / 1234
-                  </Typography>
-                </Box>
               </Box>
             </form>
           </CardContent>
