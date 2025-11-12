@@ -44,7 +44,7 @@ export default function Login({ onLogin }: LoginProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)', // gradiente azul corporativo
         padding: 2,
       }}
     >
@@ -58,7 +58,7 @@ export default function Login({ onLogin }: LoginProps) {
         >
           <Box
             sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)', // gradiente azul corporativo
               padding: 4,
               textAlign: 'center',
             }}
@@ -89,7 +89,7 @@ export default function Login({ onLogin }: LoginProps) {
                 letterSpacing: '0.5px',
               }}
             >
-              GIATotalTrace
+              EcoTrace
             </Typography>
             <Typography
               variant="body1"
@@ -160,9 +160,9 @@ export default function Login({ onLogin }: LoginProps) {
                     textTransform: 'none',
                     fontSize: '1rem',
                     fontWeight: 500,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)', // azul corporativo
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                      background: 'linear-gradient(135deg, #2c5282 0%, #1a365d 100%)',
                     },
                   }}
                 >
