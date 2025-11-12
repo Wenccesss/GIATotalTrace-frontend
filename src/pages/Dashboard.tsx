@@ -200,4 +200,5 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Box>
       </Container>
     </Box>
-  );
+   );
+ }
