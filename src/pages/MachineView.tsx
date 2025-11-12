@@ -11,6 +11,8 @@ import {
   TextField,
   Button,
 } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
+import { useLocation } from 'wouter';
 
 interface Event {
   id: number;
@@ -23,6 +25,7 @@ interface MachineViewProps {
 }
 
 export default function MachineView({ machineId }: MachineViewProps) {
+  const [, setLocation] = useLocation();
   const [events, setEvents] = useState<Event[]>([]);
   const [currentFrequency, setCurrentFrequency] = useState<number>(30); // valor actual del servidor
   const [newFrequency, setNewFrequency] = useState<number>(30); // valor que escribe el usuario
@@ -44,10 +47,29 @@ export default function MachineView({ machineId }: MachineViewProps) {
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
       <Container maxWidth="lg">
+        {/* Botón de retroceso */}
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => setLocation('/dashboard')}
+          sx={{
+            marginBottom: 3,
+            color: '#667eea',
+            textTransform: 'none',
+            fontSize: '1rem',
+            fontWeight: 500,
+            '&:hover': {
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            },
+          }}
+        >
+          Volver al Dashboard
+        </Button>
+
         {/* Valor actual + campo editable */}
         <Box sx={{ marginBottom: 3 }}>
           <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, marginBottom: 1 }}>
-            Frecuencia de envío de datos actual: <span style={{ color: '#2b6cb0' }}>{currentFrequency} segundos</span>
+            Frecuencia de envío de datos actual:{' '}
+            <span style={{ color: '#2b6cb0' }}>{currentFrequency} segundos</span>
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 2 }}>
