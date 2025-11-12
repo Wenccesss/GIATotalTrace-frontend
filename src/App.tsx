@@ -12,14 +12,14 @@ import MachineView from '@/pages/MachineView';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#667eea',
-      dark: '#5568d3',
-      light: '#7c93f0',
+      main: '#2b6cb0',   // azul corporativo
+      dark: '#2c5282',
+      light: '#4299e1',
     },
     secondary: {
-      main: '#764ba2',
-      dark: '#6a3f8f',
-      light: '#8a5fb5',
+      main: '#2d3748',   // gris oscuro corporativo
+      dark: '#1a202c',
+      light: '#4a5568',
     },
     background: {
       default: '#f8f9fa',
@@ -135,7 +135,7 @@ function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)', // gradiente azul
           }}
         >
           <CircularProgress sx={{ color: 'white' }} size={60} />
