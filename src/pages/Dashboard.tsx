@@ -75,9 +75,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Factory sx={{ fontSize: 32, color: '#667eea' }} />
+              {/* Icono en azul corporativo */}
+              <Factory sx={{ fontSize: 32, color: '#2b6cb0' }} />
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748' }}>
-                GIATotalTrace
+                EcoTrace
               </Typography>
             </Box>
             <Tooltip title="Cerrar sesión">
@@ -86,9 +87,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 disabled={isLoggingOut}
                 data-testid="button-logout"
                 sx={{
-                  color: '#667eea',
+                  color: '#2b6cb0',
                   '&:hover': {
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    backgroundColor: 'rgba(43, 108, 176, 0.1)',
                   },
                 }}
               >
@@ -106,6 +107,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             textAlign: 'center',
           }}
         >
+          {/* Título principal con gradiente azul */}
           <Typography
             variant="h2"
             component="h1"
@@ -115,13 +117,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               color: '#2d3748',
               marginBottom: 2,
               fontSize: { xs: '2.5rem', md: '3.5rem' },
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}
           >
-            GIATotalTrace
+            EcoTrace
           </Typography>
           <Typography
             variant="h5"
@@ -145,7 +147,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                     transition: 'all 0.3s ease-in-out',
                     '&:hover': {
                       transform: 'translateY(-8px)',
-                      boxShadow: '0 12px 24px rgba(102, 126, 234, 0.2)',
+                      boxShadow: '0 12px 24px rgba(43, 108, 176, 0.2)',
                     },
                   }}
                 >
@@ -199,4 +201,3 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       </Container>
     </Box>
   );
-}
