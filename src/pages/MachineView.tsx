@@ -48,6 +48,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
         if (endDate) params.append('end', new Date(endDate).toISOString());
         url += `?${params.toString()}`;
       }
+      console.log("URL llamada:", url); // 🔎 Depuración
       const res = await fetch(url);
       const data = await res.json();
       console.log("Eventos recibidos:", data); // 🔎 Depuración
@@ -71,6 +72,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     x: new Date(ev.hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
     y: ev.estado === 'MARCHA' ? 1 : 0,
   }));
+  console.log("chartData:", chartData); // 🔎 Depuración
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
@@ -161,4 +163,3 @@ export default function MachineView({ machineId }: MachineViewProps) {
       </Container>
     </Box>
   );
-}
