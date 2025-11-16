@@ -5,17 +5,22 @@ import {
   Typography,
   Card,
   CardContent,
-  List,
-  ListItem,
-  ListItemText,
   TextField,
   Button,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useLocation } from 'wouter';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface Event {
-  id: number;
+  id: string;
   status: string;
   datetime: string;
 }
@@ -27,22 +32,44 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
   const [events, setEvents] = useState<Event[]>([]);
-  const [currentFrequency, setCurrentFrequency] = useState<number>(30); // valor actual del servidor
-  const [newFrequency, setNewFrequency] = useState<number>(30); // valor que escribe el usuario
+  const [currentFrequency, setCurrentFrequency] = useState<number>(30);
+  const [newFrequency, setNewFrequency] = useState<number>(30);
+
+  // Selectores de fecha
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const fetchEvents = async () => {
+    try {
+      let url = `https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos`;
+      if (startDate || endDate) {
+        const params = new URLSearchParams();
+        if (startDate) params.append('start', new Date(startDate).toISOString());
+        if (endDate) params.append('end', new Date(endDate).toISOString());
+        url += `?${params.toString()}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      setEvents(data);
+    } catch (err) {
+      console.error('Error al obtener eventos:', err);
+    }
+  };
 
   useEffect(() => {
-    // Aquí más adelante harás la llamada real al servidor para obtener el valor actual
-    // Simulación: recibimos 30 segundos como valor inicial
-    setCurrentFrequency(30);
-    setNewFrequency(30);
+    fetchEvents();
   }, []);
 
   const handleApply = () => {
-    // En el futuro: enviar newFrequency al servidor
-    // De momento actualizamos el valor mostrado arriba
     setCurrentFrequency(newFrequency);
     console.log(`Nuevo valor aplicado: ${newFrequency} segundos`);
   };
+
+  // Transformar eventos para la gráfica
+  const chartData = events.map(ev => ({
+    x: new Date(ev.datetime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    y: ev.status === 'MARCHA' ? 1 : 0,
+  }));
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
@@ -51,16 +78,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
         <Button
           startIcon={<ArrowBack />}
           onClick={() => setLocation('/dashboard')}
-          sx={{
-            marginBottom: 3,
-            color: '#667eea',
-            textTransform: 'none',
-            fontSize: '1rem',
-            fontWeight: 500,
-            '&:hover': {
-              backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            },
-          }}
+          sx={{ marginBottom: 3, color: '#667eea', textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
         >
           Volver al Dashboard
         </Button>
@@ -77,54 +95,52 @@ export default function MachineView({ machineId }: MachineViewProps) {
               type="number"
               value={newFrequency}
               onChange={(e) => setNewFrequency(Number(e.target.value))}
-              inputProps={{
-                min: 10,
-                max: 86400, // 24h en segundos
-              }}
+              inputProps={{ min: 10, max: 86400 }}
               sx={{ width: 200 }}
             />
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleApply}
-            >
+            <Button variant="contained" color="primary" onClick={handleApply}>
               Aplicar
             </Button>
           </Box>
         </Box>
 
-        {/* Lista de eventos */}
+        {/* Gráfica de estados con filtros */}
         <Card elevation={3} sx={{ borderRadius: 2, marginBottom: 3 }}>
           <CardContent>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, marginBottom: 2 }}>
-              Eventos de la Máquina {machineId}
+              Estado de la Máquina en el tiempo
             </Typography>
 
-            <Box
-              sx={{
-                maxHeight: 300,
-                overflowY: 'auto',
-                border: '1px solid #e2e8f0',
-                borderRadius: 2,
-              }}
-            >
-              {events.length === 0 ? (
-                <Typography variant="body2" sx={{ color: '#718096', textAlign: 'center', padding: 2 }}>
-                  No hay eventos disponibles todavía.
-                </Typography>
-              ) : (
-                <List>
-                  {events.map((event) => (
-                    <ListItem key={event.id} divider>
-                      <ListItemText
-                        primary={`${event.status} — ${event.datetime}`}
-                        primaryTypographyProps={{ sx: { color: '#2d3748', fontWeight: 500 } }}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+            {/* Selectores de fecha */}
+            <Box sx={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+              <TextField
+                label="Inicio"
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Fin"
+                type="datetime-local"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button variant="contained" color="primary" onClick={fetchEvents}>
+                Filtrar
+              </Button>
             </Box>
+
+            {/* Gráfico */}
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="x" />
+                <YAxis tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
+                <Tooltip />
+                <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
