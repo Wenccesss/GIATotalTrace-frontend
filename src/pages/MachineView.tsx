@@ -41,6 +41,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
   const fetchEvents = async () => {
     try {
+      console.log("fetchEvents ejecutado");
       let url = `https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos`;
       if (startDate || endDate) {
         const params = new URLSearchParams();
@@ -135,7 +136,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
               </Button>
             </Box>
 
-            {/* Gráfico o mensaje */}
+            {/* Gráfico simplificado */}
             {chartData.length === 0 ? (
               <Typography variant="body2" sx={{ color: '#718096', textAlign: 'center', padding: 2 }}>
                 No hay eventos en este rango.
@@ -151,13 +152,9 @@ export default function MachineView({ machineId }: MachineViewProps) {
                       new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
                     }
                   />
-                  <YAxis tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
-                  <Tooltip
-                    labelFormatter={(unixTime) =>
-                      new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                    }
-                  />
-                  <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="y" stroke="red" />
                 </LineChart>
               </ResponsiveContainer>
             )}
