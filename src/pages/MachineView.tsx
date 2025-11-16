@@ -67,9 +67,9 @@ export default function MachineView({ machineId }: MachineViewProps) {
     console.log(`Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
-  // Transformar eventos para la gráfica
+  // Transformar eventos para la gráfica (usar timestamp en X)
   const chartData = events.map(ev => ({
-    x: new Date(ev.hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    x: new Date(ev.hora).getTime(), // timestamp numérico
     y: ev.estado === 'MARCHA' ? 1 : 0,
   }));
   console.log("chartData:", chartData); // 🔎 Depuración
@@ -138,9 +138,20 @@ export default function MachineView({ machineId }: MachineViewProps) {
             {/* Gráfico */}
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
-                <XAxis dataKey="x" />
+                <XAxis
+                  dataKey="x"
+                  type="number"
+                  domain={['auto', 'auto']}
+                  tickFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                  }
+                />
                 <YAxis tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
-                <Tooltip />
+                <Tooltip
+                  labelFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                  }
+                />
                 <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -163,3 +174,4 @@ export default function MachineView({ machineId }: MachineViewProps) {
       </Container>
     </Box>
   );
+}
