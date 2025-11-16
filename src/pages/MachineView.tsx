@@ -48,10 +48,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
         if (endDate) params.append('end', new Date(endDate).toISOString());
         url += `?${params.toString()}`;
       }
-      console.log("URL llamada:", url); // 🔎 Depuración
+      console.log("URL llamada:", url);
       const res = await fetch(url);
       const data = await res.json();
-      console.log("Eventos recibidos:", data); // 🔎 Depuración
+      console.log("Eventos recibidos:", data);
       setEvents(data);
     } catch (err) {
       console.error('Error al obtener eventos:', err);
@@ -67,12 +67,12 @@ export default function MachineView({ machineId }: MachineViewProps) {
     console.log(`Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
-  // Transformar eventos para la gráfica (usar timestamp en X)
+  // Transformar eventos para la gráfica
   const chartData = events.map(ev => ({
     x: new Date(ev.hora).getTime(), // timestamp numérico
     y: ev.estado === 'MARCHA' ? 1 : 0,
   }));
-  console.log("chartData:", chartData); // 🔎 Depuración
+  console.log("chartData:", chartData);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
@@ -135,26 +135,32 @@ export default function MachineView({ machineId }: MachineViewProps) {
               </Button>
             </Box>
 
-            {/* Gráfico */}
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <XAxis
-                  dataKey="x"
-                  type="number"
-                  domain={['auto', 'auto']}
-                  tickFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                  }
-                />
-                <YAxis tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
-                <Tooltip
-                  labelFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                  }
-                />
-                <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            {/* Gráfico o mensaje */}
+            {chartData.length === 0 ? (
+              <Typography variant="body2" sx={{ color: '#718096', textAlign: 'center', padding: 2 }}>
+                No hay eventos en este rango.
+              </Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <XAxis
+                    dataKey="x"
+                    type="number"
+                    domain={['auto', 'auto']}
+                    tickFormatter={(unixTime) =>
+                      new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                    }
+                  />
+                  <YAxis tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
+                  <Tooltip
+                    labelFormatter={(unixTime) =>
+                      new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    }
+                  />
+                  <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
