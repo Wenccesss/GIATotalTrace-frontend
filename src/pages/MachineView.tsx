@@ -17,6 +17,8 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid,
+  ReferenceArea,
 } from 'recharts';
 
 interface Event {
@@ -35,13 +37,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [currentFrequency, setCurrentFrequency] = useState<number>(30);
   const [newFrequency, setNewFrequency] = useState<number>(30);
 
-  // Selectores de fecha
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
   const fetchEvents = async () => {
     try {
-      console.log("fetchEvents ejecutado");
       let url = `https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos`;
       if (startDate || endDate) {
         const params = new URLSearchParams();
@@ -68,17 +68,20 @@ export default function MachineView({ machineId }: MachineViewProps) {
     console.log(`Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
-  // Transformar eventos para la gráfica
   const chartData = events.map(ev => ({
-    x: new Date(ev.hora).getTime(), // timestamp numérico
+    x: new Date(ev.hora).getTime(),
     y: ev.estado === 'MARCHA' ? 1 : 0,
   }));
   console.log("chartData:", chartData);
 
+  // Definir rango inicial para ReferenceArea (ejemplo: últimas 24h)
+  const now = Date.now();
+  const inicioTimestamp = now - 24 * 60 * 60 * 1000;
+  const finTimestamp = now;
+
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
       <Container maxWidth="lg">
-        {/* Botón de retroceso */}
         <Button
           startIcon={<ArrowBack />}
           onClick={() => setLocation('/dashboard')}
@@ -87,7 +90,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
           Volver al Dashboard
         </Button>
 
-        {/* Valor actual + campo editable */}
         <Box sx={{ marginBottom: 3 }}>
           <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, marginBottom: 1 }}>
             Frecuencia de envío de datos actual:{' '}
@@ -108,14 +110,12 @@ export default function MachineView({ machineId }: MachineViewProps) {
           </Box>
         </Box>
 
-        {/* Gráfica de estados con filtros */}
         <Card elevation={3} sx={{ borderRadius: 2, marginBottom: 3 }}>
           <CardContent>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, marginBottom: 2 }}>
               Estado de la Máquina en el tiempo
             </Typography>
 
-            {/* Selectores de fecha */}
             <Box sx={{ display: 'flex', gap: 2, marginBottom: 2 }}>
               <TextField
                 label="Inicio"
@@ -136,32 +136,27 @@ export default function MachineView({ machineId }: MachineViewProps) {
               </Button>
             </Box>
 
-            {/* Gráfico simplificado */}
-            {chartData.length === 0 ? (
-              <Typography variant="body2" sx={{ color: '#718096', textAlign: 'center', padding: 2 }}>
-                No hay eventos en este rango.
-              </Typography>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <XAxis
-                    dataKey="x"
-                    type="number"
-                    domain={['auto', 'auto']}
-                    tickFormatter={(unixTime) =>
-                      new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                    }
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="y" stroke="red" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid stroke="#ccc" strokeDasharray="3 3" /> {/* cuadrícula */}
+                <XAxis
+                  dataKey="x"
+                  type="number"
+                  domain={['auto', 'auto']}
+                  tickFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                  }
+                />
+                <YAxis domain={[0, 1]} tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
+                <Tooltip />
+                {/* Rectángulo base de referencia */}
+                <ReferenceArea x1={inicioTimestamp} x2={finTimestamp} y1={0} y2={1} fill="#f0f0f0" />
+                <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Apartado reservado para IA */}
         <Card elevation={3} sx={{ borderRadius: 2 }}>
           <CardContent>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, marginBottom: 2 }}>
