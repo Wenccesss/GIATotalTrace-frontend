@@ -21,8 +21,8 @@ import {
 
 interface Event {
   id: string;
-  status: string;
-  datetime: string;
+  estado: string;
+  hora: string;
 }
 
 interface MachineViewProps {
@@ -50,6 +50,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
       }
       const res = await fetch(url);
       const data = await res.json();
+      console.log("Eventos recibidos:", data); // 🔎 Depuración
       setEvents(data);
     } catch (err) {
       console.error('Error al obtener eventos:', err);
@@ -67,8 +68,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
   // Transformar eventos para la gráfica
   const chartData = events.map(ev => ({
-    x: new Date(ev.datetime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-    y: ev.status === 'MARCHA' ? 1 : 0,
+    x: new Date(ev.hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    y: ev.estado === 'MARCHA' ? 1 : 0,
   }));
 
   return (
