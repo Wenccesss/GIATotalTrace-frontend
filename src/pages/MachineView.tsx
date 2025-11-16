@@ -147,7 +147,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
                   }
                 />
-                <YAxis domain={[0, 1]} tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
+                <YAxis
+               domain={[0, 1]}
+               ticks={[0, 1]}
+               tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                />
                 <Tooltip />
                 {/* Rectángulo base de referencia */}
                 <ReferenceArea x1={inicioTimestamp} x2={finTimestamp} y1={0} y2={1} fill="#f0f0f0" />
