@@ -91,8 +91,9 @@ export default function MachineView({ machineId }: MachineViewProps) {
     y: ev.estado === "MARCHA" ? 1 : 0,
   }));
 
-  // Añadimos un punto "virtual" hasta la hora actual con el último estado
-  if (events.length > 0) {
+  // Si NO hay filtros aplicados y sí hay eventos → añadimos punto hasta ahora
+  const noFilters = !startDate && !endDate;
+  if (noFilters && events.length > 0) {
     const lastEvent = events[events.length - 1];
     chartData.push({
       x: Date.now(),
@@ -100,7 +101,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     });
   }
 
-  console.log("📊 chartData con punto actual:", chartData);
+  console.log("📊 chartData:", chartData);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
