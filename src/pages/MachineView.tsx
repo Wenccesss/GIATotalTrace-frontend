@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Container,
@@ -19,7 +19,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  ReferenceLine,
 } from 'recharts';
 
 interface Event {
@@ -35,7 +34,7 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
 
-  // Inputs pasivos (no disparan fetch hasta pulsar Filtrar)
+  // Inputs pasivos
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');
 
@@ -55,11 +54,17 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [selectedInfo2, setSelectedInfo2] = useState<string>('');
   const [diffInfo, setDiffInfo] = useState<string>('');
 
+  // Ref del contenedor para overlay y mapeo pixel↔tiempo
+  const chartWrapRef = useRef<HTMLDivElement | null>(null);
+
   // Límites del calendario
   const nowIso = new Date().toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
   const oneMonthAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
+
+  // Márgenes del gráfico (deben coincidir con LineChart.margin)
+  const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
 
   // Fetch de eventos (usa filtros activos)
   const fetchEvents = async (start?: string, end?: string) => {
@@ -192,18 +197,47 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  // Arrastre de líneas
-  const handleMouseDownBlack = () => setDraggingLine('black');
-  const handleMouseDownRed = () => setDraggingLine('red');
+  // Conversión pixel ↔ tiempo (overlay propio)
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-  const handleMouseMove = (e: any) => {
-    if (!draggingLine || !e || !e.activeLabel) return;
-    const x = e.activeLabel as number;
-    if (draggingLine === 'black') setSelectedX1(x);
-    if (draggingLine === 'red') setSelectedX2(x);
+  const pixelToTime = (clientX: number) => {
+    const rect = chartWrapRef.current?.getBoundingClientRect();
+    if (!rect) return startTimestamp;
+    const plotW = rect.width - MARGINS.left - MARGINS.right;
+    if (plotW <= 0) return startTimestamp;
+    const xInPlot = clamp(clientX - rect.left - MARGINS.left, 0, plotW);
+    const rel = xInPlot / plotW;
+    const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
+    return Math.round(ms / 1000) * 1000; // a segundo
   };
 
-  const handleMouseUp = () => {
+  const timeToLeftPx = (ms: number) => {
+    const rect = chartWrapRef.current?.getBoundingClientRect();
+    if (!rect || endTimestamp === startTimestamp) return MARGINS.left;
+    const plotW = rect.width - MARGINS.left - MARGINS.right;
+    const rel = (ms - startTimestamp) / (endTimestamp - startTimestamp);
+    return MARGINS.left + clamp(rel, 0, 1) * plotW;
+  };
+
+  // Overlay de arrastre
+  const handleOverlayMouseDown = (e: React.MouseEvent) => {
+    // Elegimos línea por proximidad al click
+    const clickX = e.clientX;
+    const d1 = Math.abs(timeToLeftPx(selectedX1) - (chartWrapRef.current?.getBoundingClientRect().left ?? 0) - (clickX - (chartWrapRef.current?.getBoundingClientRect().left ?? 0)));
+    const d2 = Math.abs(timeToLeftPx(selectedX2) - (chartWrapRef.current?.getBoundingClientRect().left ?? 0) - (clickX - (chartWrapRef.current?.getBoundingClientRect().left ?? 0)));
+    const threshold = 12; // px
+    if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
+    else if (d2 <= threshold) setDraggingLine('red');
+  };
+
+  const handleOverlayMouseMove = (e: React.MouseEvent) => {
+    if (!draggingLine) return;
+    const xMs = pixelToTime(e.clientX);
+    if (draggingLine === 'black') setSelectedX1(xMs);
+    if (draggingLine === 'red') setSelectedX2(xMs);
+  };
+
+  const handleOverlayMouseUp = () => {
     if (!draggingLine) return;
 
     if (draggingLine === 'black') {
@@ -219,6 +253,15 @@ export default function MachineView({ machineId }: MachineViewProps) {
       setDiffInfo(formatDiff(selectedX2 - selectedX1));
     }
   };
+
+  // Inicializar líneas al rango visible cuando cambia
+  useEffect(() => {
+    setSelectedX1(startTimestamp);
+    setSelectedX2(endTimestamp);
+    setSelectedInfo1('');
+    setSelectedInfo2('');
+    setDiffInfo('');
+  }, [startTimestamp, endTimestamp]);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
@@ -281,77 +324,113 @@ export default function MachineView({ machineId }: MachineViewProps) {
               )}
             </Stack>
 
-            <ResponsiveContainer width="100%" height={360}>
-              <LineChart
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
-                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="x"
-                  type="number"
-                  domain={[startTimestamp, endTimestamp]}
-                  tickFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleString('es-ES', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                  }
-                  tick={{ fontSize: 12, fill: '#475569' }}
-                />
-                <YAxis
-                  domain={[0, 1]}
-                  ticks={[0, 1]}
-                  tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-                  width={80}
-                  tick={{ fontSize: 12, fill: '#475569' }}
-                />
-                <Tooltip
-                  labelFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleString('es-ES', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                  }
-                  formatter={(value) => (value === 1 ? 'MARCHA' : 'PARO')}
-                />
-                <Line
-                  type="stepAfter"
-                  dataKey="y"
-                  stroke="#667eea"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
+            {/* Contenedor del gráfico + overlay de arrastre */}
+            <Box
+              ref={chartWrapRef}
+              sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
+              onMouseDown={handleOverlayMouseDown}
+              onMouseMove={handleOverlayMouseMove}
+              onMouseUp={handleOverlayMouseUp}
+              onMouseLeave={handleOverlayMouseUp}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={MARGINS}>
+                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="x"
+                    type="number"
+                    domain={[startTimestamp, endTimestamp]}
+                    tickFormatter={(unixTime) =>
+                      new Date(unixTime).toLocaleString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
+                    }
+                    tick={{ fontSize: 12, fill: '#475569' }}
+                  />
+                  <YAxis
+                    domain={[0, 1]}
+                    ticks={[0, 1]}
+                    tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                    width={80}
+                    tick={{ fontSize: 12, fill: '#475569' }}
+                  />
+                  <Tooltip
+                    labelFormatter={(unixTime) =>
+                      new Date(unixTime).toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
+                    }
+                    formatter={(value) => (value === 1 ? 'MARCHA' : 'PARO')}
+                  />
+                  <Line
+                    type="stepAfter"
+                    dataKey="y"
+                    stroke="#667eea"
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
 
-                {/* Línea negra arrastrable */}
-                <ReferenceLine
-                  x={selectedX1}
-                  stroke="black"
-                  strokeWidth={2}
-                  ifOverflow="extendDomain"
-                  onMouseDown={handleMouseDownBlack}
-                />
-                {/* Línea roja arrastrable */}
-                <ReferenceLine
-                  x={selectedX2}
-                  stroke="red"
-                  strokeWidth={2}
-                  ifOverflow="extendDomain"
-                  onMouseDown={handleMouseDownRed}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+              {/* Overlay: líneas verticales posicionadas por píxeles */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: timeToLeftPx(selectedX1),
+                  width: 0,
+                  borderLeft: '2px solid black',
+                  pointerEvents: 'none',
+                }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: timeToLeftPx(selectedX2),
+                  width: 0,
+                  borderLeft: '2px solid red',
+                  pointerEvents: 'none',
+                }}
+              />
+
+              {/* Handles para facilitar el arrastre (capturan el mouse) */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: timeToLeftPx(selectedX1) - 6,
+                  width: 12,
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={() => setDraggingLine('black')}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: timeToLeftPx(selectedX2) - 6,
+                  width: 12,
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={() => setDraggingLine('red')}
+              />
+            </Box>
           </CardContent>
         </Card>
       </Container>
