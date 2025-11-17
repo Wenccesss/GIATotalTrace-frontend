@@ -18,6 +18,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  ReferenceLine,
 } from 'recharts';
 
 interface Event {
@@ -38,9 +39,13 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const [selectedX, setSelectedX] = useState<number | null>(null);
+  const [selectedState, setSelectedState] = useState<string>("");
 
   const fetchEvents = async () => {
-    console.log("🔎 fetchEvents ejecutado");
+    setLoading(true);
     let url = "https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos";
 
     if (startDate || endDate) {
@@ -50,49 +55,49 @@ export default function MachineView({ machineId }: MachineViewProps) {
       url += `?${params.toString()}`;
     }
 
-    console.log("🌐 URL llamada:", url);
-
     try {
       const res = await fetch(url);
-      console.log("📡 HTTP status:", res.status, res.statusText);
-
       if (!res.ok) {
         const text = await res.text().catch(() => "<sin cuerpo>");
         console.error("❌ Respuesta no OK:", text);
+        setLoading(false);
         return;
       }
 
       const data = await res.json();
-      console.log("📦 Eventos recibidos:", data);
-
       if (!Array.isArray(data)) {
         console.error("⚠️ La respuesta no es un array:", data);
+        setLoading(false);
         return;
       }
 
       setEvents(data);
     } catch (err) {
-      console.error("❌ Error de fetch (posible CORS / red):", err);
+      console.error("❌ Error de fetch:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, [startDate, endDate]);
+    fetchEvents(); // solo al montar
+  }, []);
 
   const handleApply = () => {
     setCurrentFrequency(newFrequency);
-    console.log(`⚙️ Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
-  // Transformación de eventos a chartData
+  const handleFilter = () => {
+    fetchEvents();
+  };
+
+  const noFilters = !startDate && !endDate;
+
   let chartData = events.map(ev => ({
     x: new Date(ev.hora).getTime(),
     y: ev.estado === "MARCHA" ? 1 : 0,
   }));
 
-  // Si NO hay filtros aplicados y sí hay eventos → añadimos punto hasta ahora
-  const noFilters = !startDate && !endDate;
   if (noFilters && events.length > 0) {
     const lastEvent = events[events.length - 1];
     chartData.push({
@@ -101,7 +106,16 @@ export default function MachineView({ machineId }: MachineViewProps) {
     });
   }
 
-  console.log("📊 chartData:", chartData);
+  const handleChartClick = (e: any) => {
+    if (!e || !e.activeLabel) return;
+    const xValue = e.activeLabel;
+    setSelectedX(xValue);
+
+    const closest = chartData.reduce((prev, curr) =>
+      Math.abs(curr.x - xValue) < Math.abs(prev.x - xValue) ? curr : prev
+    );
+    setSelectedState(closest.y === 1 ? "MARCHA" : "PARO");
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
@@ -155,7 +169,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setEndDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
-              <Button variant="contained" color="primary" onClick={fetchEvents}>
+              <Button variant="contained" color="primary" onClick={handleFilter}>
                 Filtrar
               </Button>
             </Box>
@@ -164,14 +178,27 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <LineChart
                 data={chartData}
                 margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
+                onClick={handleChartClick}
               >
                 <CartesianGrid stroke="#ccc" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="x"
                   type="number"
-                  domain={['auto', 'auto']}
+                  domain={
+                    noFilters
+                      ? [chartData[0]?.x || 'auto', Date.now()]
+                      : [
+                          startDate ? new Date(startDate).getTime() : 'auto',
+                          endDate ? new Date(endDate).getTime() : 'auto'
+                        ]
+                  }
+                  tickCount={30}
                   tickFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                    new Date(unixTime).toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
                   }
                 />
                 <YAxis
@@ -183,10 +210,26 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 />
                 <Tooltip
                   labelFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    new Date(unixTime).toLocaleString('es-ES', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
                   }
+                  formatter={(value) => (value === 1 ? 'MARCHA' : 'PARO')}
                 />
                 <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+                {selectedX && (
+                  <ReferenceLine
+                    x={selectedX}
+                    stroke="black"
+                    strokeWidth={2}
+                    label={`Estado: ${selectedState}`}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
