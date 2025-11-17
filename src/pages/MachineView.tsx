@@ -39,15 +39,15 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');
 
-  // Filtros activos (se aplican al pulsar Filtrar)
+  // Filtros activos
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  // Datos y estado de carga
+  // Datos y carga
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Líneas verticales y paneles de info
+  // Líneas verticales y panel de info
   const [selectedX1, setSelectedX1] = useState<number>(Date.now());
   const [selectedX2, setSelectedX2] = useState<number>(Date.now());
   const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
@@ -77,11 +77,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
       const res = await fetch(url);
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
-      // Normalizamos y ordenamos por tiempo (por seguridad)
-      const normalized = arr
+      const normalized: Event[] = arr
         .map((e: any) => ({
           id: String(e.id ?? ''),
-          estado: (e.estado === 'MARCHA' ? 'MARCHA' : 'PARO') as 'MARCHA' | 'PARO',
+          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
           hora: String(e.hora),
         }))
         .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
@@ -94,14 +93,13 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
-  // Carga inicial sin filtros (últimos eventos)
+  // Carga inicial
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  // Aplicar filtros solo al pulsar el botón
+  // Aplicar filtros solo al pulsar “Filtrar”
   const handleFilter = () => {
-    // Asegurar que Fin no sea futuro y que Inicio no sea anterior a 1 mes atrás
     const startValid = startDateInput
       ? Math.max(new Date(startDateInput).getTime(), new Date(oneMonthAgoIso).getTime())
       : undefined;
@@ -129,15 +127,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return Date.now();
   }, [endDate]);
 
-  // Serie "sparse" (solo puntos de cambio) para rendimiento:
-  // - punto inicial con estado vigente en startTimestamp
-  // - cada evento dentro del rango
-  // - punto final en endTimestamp
+  // Serie discreta basada en eventos para rendimiento
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
 
-    // Copia y orden
     const sorted = [...events].sort(
       (a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime()
     );
@@ -146,7 +140,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const initialState = getStateAtRaw(sorted, startTimestamp);
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
-    // Insertar cada cambio dentro del rango
+    // Eventos dentro del rango
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
@@ -154,24 +148,12 @@ export default function MachineView({ machineId }: MachineViewProps) {
       }
     }
 
-    // Punto final para mantener el tramo hasta el fin
+    // Punto final para cerrar tramo
     const lastState = getStateAtRaw(sorted, endTimestamp);
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
 
-    // Orden final y quitar duplicados de x si existen
     series.sort((a, b) => a.x - b.x);
-    const dedup: { x: number; y: number }[] = [];
-    let lastX: number | null = null;
-    for (const p of series) {
-      if (p.x !== lastX) {
-        dedup.push(p);
-        lastX = p.x;
-      } else {
-        // Si hay dos puntos mismo x, dejamos el último y que representa el cambio
-        dedup[dedup.length - 1] = p;
-      }
-    }
-    return dedup;
+    return series;
   }, [events, startTimestamp, endTimestamp]);
 
   // Utilidades
@@ -185,10 +167,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
       second: '2-digit',
     });
 
-  // Estado vigente en un ms usando eventos ordenados (búsqueda por límites)
   function getStateAtRaw(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
     if (sortedEvents.length === 0) return 'PARO';
-    // Encontrar el último evento <= ms
     let state: 'MARCHA' | 'PARO' = sortedEvents[0].estado;
     for (let i = 0; i < sortedEvents.length; i++) {
       const t = new Date(sortedEvents[i].hora).getTime();
@@ -201,7 +181,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return state;
   }
 
-  // Wrapper usando `events` actuales
   const getStateAt = (ms: number) => getStateAtRaw(events, ms);
 
   const formatDiff = (ms: number) => {
@@ -213,7 +192,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  // Dragging
+  // Arrastre de líneas
   const handleMouseDownBlack = () => setDraggingLine('black');
   const handleMouseDownRed = () => setDraggingLine('red');
 
@@ -266,7 +245,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: oneMonthAgoIso, // no más allá de 1 mes atrás
+                  min: oneMonthAgoIso, // no más allá de 1 mes
                   max: nowIso,         // no más allá de ahora
                 }}
               />
@@ -302,7 +281,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
               )}
             </Stack>
 
-            <ResponsiveContainer width="100%" height={340}>
+            <ResponsiveContainer width="100%" height={360}>
               <LineChart
                 data={chartData}
                 margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
@@ -315,7 +294,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   type="number"
                   domain={[startTimestamp, endTimestamp]}
                   tickFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleTimeString('es-ES', {
+                    new Date(unixTime).toLocaleString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
@@ -352,7 +334,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   isAnimationActive={false}
                 />
 
-                {/* Línea negra draggable */}
+                {/* Línea negra arrastrable */}
                 <ReferenceLine
                   x={selectedX1}
                   stroke="black"
@@ -360,7 +342,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   ifOverflow="extendDomain"
                   onMouseDown={handleMouseDownBlack}
                 />
-                {/* Línea roja draggable */}
+                {/* Línea roja arrastrable */}
                 <ReferenceLine
                   x={selectedX2}
                   stroke="red"
