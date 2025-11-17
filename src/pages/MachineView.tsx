@@ -24,8 +24,8 @@ import {
 
 interface Event {
   id: string;
-  estado: string; // "MARCHA" | "PARO"
-  hora: string;   // ISO date string
+  estado: 'MARCHA' | 'PARO';
+  hora: string; // ISO datetime string
 }
 
 interface MachineViewProps {
@@ -35,41 +35,48 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
 
-  // Datos y filtros
-  const [events, setEvents] = useState<Event[]>([]);
+  // Inputs pasivos (no disparan fetch hasta pulsar Filtrar)
+  const [startDateInput, setStartDateInput] = useState<string>('');
+  const [endDateInput, setEndDateInput] = useState<string>('');
+
+  // Filtros activos (se aplican al pulsar Filtrar)
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  // Datos y estado de carga
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   // Líneas verticales y paneles de info
   const [selectedX1, setSelectedX1] = useState<number>(Date.now());
   const [selectedX2, setSelectedX2] = useState<number>(Date.now());
-  const [draggingLine, setDraggingLine] = useState<"black" | "red" | null>(null);
+  const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
   const [selectedInfo1, setSelectedInfo1] = useState<string>('');
   const [selectedInfo2, setSelectedInfo2] = useState<string>('');
   const [diffInfo, setDiffInfo] = useState<string>('');
 
-  // Cargar eventos
-  const fetchEvents = async () => {
+  // Límites del calendario
+  const nowIso = new Date().toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
+  const oneMonthAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 16);
+
+  // Fetch de eventos (usa filtros activos)
+  const fetchEvents = async (start?: string, end?: string) => {
     setLoading(true);
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
 
-    if (startDate || endDate) {
+    if (start || end) {
       const params = new URLSearchParams();
-      if (startDate) params.append('start', new Date(startDate).toISOString());
-      if (endDate) params.append('end', new Date(endDate).toISOString());
+      if (start) params.append('start', new Date(start).toISOString());
+      if (end) params.append('end', new Date(end).toISOString());
       url += `?${params.toString()}`;
     }
 
     try {
       const res = await fetch(url);
-      if (!res.ok) {
-        console.error('Respuesta no OK:', res.status, res.statusText);
-        setEvents([]);
-      } else {
-        const data = await res.json();
-        setEvents(Array.isArray(data) ? data : []);
-      }
+      const data = await res.json();
+      setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error de fetch:', err);
       setEvents([]);
@@ -78,16 +85,30 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
+  // Carga inicial sin filtros (últimos eventos)
   useEffect(() => {
-    fetchEvents(); // carga inicial al montar
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchEvents();
   }, []);
 
+  // Aplicar filtros solo al pulsar el botón
   const handleFilter = () => {
-    fetchEvents();
+    // Asegurar que Fin no sea futuro y que Inicio no sea anterior a 1 mes atrás
+    const startValid = startDateInput
+      ? Math.max(new Date(startDateInput).getTime(), new Date(oneMonthAgoIso).getTime())
+      : undefined;
+    const endValid = endDateInput
+      ? Math.min(new Date(endDateInput).getTime(), new Date(nowIso).getTime())
+      : undefined;
+
+    const startISO = startValid ? new Date(startValid).toISOString().slice(0, 16) : '';
+    const endISO = endValid ? new Date(endValid).toISOString().slice(0, 16) : '';
+
+    setStartDate(startISO);
+    setEndDate(endISO);
+    fetchEvents(startISO, endISO);
   };
 
-  // Rangos de tiempo para el timeline continuo
+  // Rango activo de la gráfica
   const startTimestamp = useMemo(() => {
     if (startDate) return new Date(startDate).getTime();
     if (events[0]) return new Date(events[0].hora).getTime();
@@ -99,25 +120,20 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return Date.now();
   }, [endDate]);
 
-  // Construir timeline continuo por segundos con estado persistente
+  // Timeline continuo con estado persistente por segundo
   const chartData = useMemo(() => {
     const timeline: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return timeline;
 
-    // Ordenar eventos por tiempo por seguridad
     const sorted = [...events].sort(
       (a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime()
     );
 
-    // Estado inicial: si hay eventos, se toma el del primer evento;
-    // si no, asumimos PARO (0) para evitar estados vacíos.
     let currentState =
       sorted.length > 0 && sorted[0].estado === 'MARCHA' ? 1 : 0;
-
     let eventIndex = 0;
 
     for (let t = startTimestamp; t <= endTimestamp; t += 1000) {
-      // Avanzar eventos que ocurren antes o en t
       while (
         eventIndex < sorted.length &&
         new Date(sorted[eventIndex].hora).getTime() <= t
@@ -130,7 +146,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return timeline;
   }, [events, startTimestamp, endTimestamp]);
 
-  // Función util para formatear fecha/hora
+  // Utilidades
   const formatDateTime = (ms: number) =>
     new Date(ms).toLocaleString('es-ES', {
       year: 'numeric',
@@ -141,34 +157,26 @@ export default function MachineView({ machineId }: MachineViewProps) {
       second: '2-digit',
     });
 
-  // Buscar estado vigente en un instante (siempre existe en chartData)
   const getStateAt = (ms: number) => {
     if (!chartData.length) return 'PARO';
-    // chartData está por segundo, podemos indexar
-    // buscar último punto <= ms
-    const idx = Math.min(
-      chartData.length - 1,
-      Math.max(0, Math.floor((ms - chartData[0].x) / 1000))
-    );
-    const probeX = chartData[0].x + idx * 1000;
-    const y =
-      probeX <= ms
-        ? chartData[idx].y
-        : chartData[Math.max(0, idx - 1)].y;
+    // index aproximado por segundo desde el inicio
+    const idx = Math.floor((ms - chartData[0].x) / 1000);
+    if (idx <= 0) return chartData[0].y === 1 ? 'MARCHA' : 'PARO';
+    if (idx >= chartData.length) return chartData[chartData.length - 1].y === 1 ? 'MARCHA' : 'PARO';
+    const y = chartData[Math.min(chartData.length - 1, Math.max(0, idx))].y;
     return y === 1 ? 'MARCHA' : 'PARO';
   };
 
-  // Diferencia de tiempo formateada
   const formatDiff = (ms: number) => {
     const diffSec = Math.floor(Math.abs(ms) / 1000);
     const days = Math.floor(diffSec / 86400);
     const hours = Math.floor((diffSec % 86400) / 3600);
     const minutes = Math.floor((diffSec % 3600) / 60);
     const seconds = diffSec % 60;
-    return ` ${days}d ${hours}h ${minutes}m ${seconds}s`;
+    return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  // Dragging handlers
+  // Dragging
   const handleMouseDownBlack = () => setDraggingLine('black');
   const handleMouseDownRed = () => setDraggingLine('red');
 
@@ -184,14 +192,13 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
     if (draggingLine === 'black') {
       const estado = getStateAt(selectedX1);
-      setSelectedInfo1(` ${estado} | ${formatDateTime(selectedX1)}`);
+      setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
     } else {
       const estado = getStateAt(selectedX2);
-      setSelectedInfo2(` ${estado} | ${formatDateTime(selectedX2)}`);
+      setSelectedInfo2(`${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
 
-    // Actualizar diferencia si ambas líneas tienen valores
     if (selectedX1 && selectedX2) {
       setDiffInfo(formatDiff(selectedX2 - selectedX1));
     }
@@ -218,16 +225,24 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <TextField
                 label="Inicio"
                 type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: oneMonthAgoIso, // no más allá de 1 mes
+                  max: nowIso,         // no más allá de ahora
+                }}
               />
               <TextField
                 label="Fin"
                 type="datetime-local"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: oneMonthAgoIso, // opcional para coherencia
+                  max: nowIso,         // bloquear futuro
+                }}
               />
               <Button variant="contained" color="primary" onClick={handleFilter} disabled={loading}>
                 {loading ? 'Cargando…' : 'Filtrar'}
