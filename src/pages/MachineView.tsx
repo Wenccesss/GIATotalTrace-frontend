@@ -54,17 +54,25 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
     try {
       const res = await fetch(url);
-      console.log("📡 HTTP status:", res.status);
+      console.log("📡 HTTP status:", res.status, res.statusText);
+
       if (!res.ok) {
-        const text = await res.text();
+        const text = await res.text().catch(() => "<sin cuerpo>");
         console.error("❌ Respuesta no OK:", text);
         return;
       }
+
       const data = await res.json();
       console.log("📦 Eventos recibidos:", data);
+
+      if (!Array.isArray(data)) {
+        console.error("⚠️ La respuesta no es un array:", data);
+        return;
+      }
+
       setEvents(data);
     } catch (err) {
-      console.error("❌ Error de fetch:", err);
+      console.error("❌ Error de fetch (posible CORS / red):", err);
     }
   };
 
