@@ -34,15 +34,13 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
   const [events, setEvents] = useState<Event[]>([]);
-  const [currentFrequency, setCurrentFrequency] = useState<number>(30);
-  const [newFrequency, setNewFrequency] = useState<number>(30);
-
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
-  const [selectedX, setSelectedX] = useState<number | null>(null);
-  const [selectedState, setSelectedState] = useState<string>("");
+  const [selectedX, setSelectedX] = useState<number>(Date.now());
+  const [dragging, setDragging] = useState<boolean>(false);
+  const [selectedInfo, setSelectedInfo] = useState<string>("");
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -57,21 +55,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
     try {
       const res = await fetch(url);
-      if (!res.ok) {
-        const text = await res.text().catch(() => "<sin cuerpo>");
-        console.error("❌ Respuesta no OK:", text);
-        setLoading(false);
-        return;
-      }
-
       const data = await res.json();
-      if (!Array.isArray(data)) {
-        console.error("⚠️ La respuesta no es un array:", data);
-        setLoading(false);
-        return;
-      }
-
-      setEvents(data);
+      setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Error de fetch:", err);
     } finally {
@@ -80,41 +65,60 @@ export default function MachineView({ machineId }: MachineViewProps) {
   };
 
   useEffect(() => {
-    fetchEvents(); // solo al montar
+    fetchEvents(); // carga inicial
   }, []);
-
-  const handleApply = () => {
-    setCurrentFrequency(newFrequency);
-  };
 
   const handleFilter = () => {
     fetchEvents();
   };
 
-  const noFilters = !startDate && !endDate;
+  // Construir timeline continuo por segundos
+  const buildTimeline = (events: Event[], start: number, end: number) => {
+    const timeline: { x: number; y: number }[] = [];
+    let currentState = events[0]?.estado === "MARCHA" ? 1 : 0;
+    let eventIndex = 0;
 
-  let chartData = events.map(ev => ({
-    x: new Date(ev.hora).getTime(),
-    y: ev.estado === "MARCHA" ? 1 : 0,
-  }));
+    for (let t = start; t <= end; t += 1000) { // cada segundo
+      if (
+        eventIndex < events.length &&
+        new Date(events[eventIndex].hora).getTime() <= t
+      ) {
+        currentState = events[eventIndex].estado === "MARCHA" ? 1 : 0;
+        eventIndex++;
+      }
+      timeline.push({ x: t, y: currentState });
+    }
+    return timeline;
+  };
 
-  if (noFilters && events.length > 0) {
-    const lastEvent = events[events.length - 1];
-    chartData.push({
-      x: Date.now(),
-      y: lastEvent.estado === "MARCHA" ? 1 : 0,
+  const startTimestamp = startDate ? new Date(startDate).getTime() : (events[0] ? new Date(events[0].hora).getTime() : Date.now() - 3600000);
+  const endTimestamp = endDate ? new Date(endDate).getTime() : Date.now();
+
+  const chartData = buildTimeline(events, startTimestamp, endTimestamp);
+
+  // Dragging logic
+  const handleMouseDown = () => setDragging(true);
+  const handleMouseUp = () => {
+    setDragging(false);
+    const fecha = new Date(selectedX).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     });
-  }
 
-  const handleChartClick = (e: any) => {
-    if (!e || !e.activeLabel) return;
-    const xValue = e.activeLabel;
-    setSelectedX(xValue);
+    // Buscar último estado válido en ese instante
+    const lastPoint = chartData.filter(d => d.x <= selectedX).pop();
+    const estado = lastPoint?.y === 1 ? "MARCHA" : "PARO";
 
-    const closest = chartData.reduce((prev, curr) =>
-      Math.abs(curr.x - xValue) < Math.abs(prev.x - xValue) ? curr : prev
-    );
-    setSelectedState(closest.y === 1 ? "MARCHA" : "PARO");
+    setSelectedInfo(`Estado: ${estado} | ${fecha}`);
+  };
+
+  const handleMouseMove = (e: any) => {
+    if (!dragging || !e || !e.activeLabel) return;
+    setSelectedX(e.activeLabel);
   };
 
   return (
@@ -127,26 +131,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
         >
           Volver al Dashboard
         </Button>
-
-        <Box sx={{ marginBottom: 3 }}>
-          <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, marginBottom: 1 }}>
-            Frecuencia de envío de datos actual:{' '}
-            <span style={{ color: '#2b6cb0' }}>{currentFrequency} segundos</span>
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 2 }}>
-            <TextField
-              type="number"
-              value={newFrequency}
-              onChange={(e) => setNewFrequency(Number(e.target.value))}
-              inputProps={{ min: 10, max: 86400 }}
-              sx={{ width: 200 }}
-            />
-            <Button variant="contained" color="primary" onClick={handleApply}>
-              Aplicar
-            </Button>
-          </Box>
-        </Box>
 
         <Card elevation={3} sx={{ borderRadius: 2, marginBottom: 3 }}>
           <CardContent>
@@ -178,21 +162,14 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <LineChart
                 data={chartData}
                 margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
-                onClick={handleChartClick}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
               >
                 <CartesianGrid stroke="#ccc" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="x"
                   type="number"
-                  domain={
-                    noFilters
-                      ? [chartData[0]?.x || 'auto', Date.now()]
-                      : [
-                          startDate ? new Date(startDate).getTime() : 'auto',
-                          endDate ? new Date(endDate).getTime() : 'auto'
-                        ]
-                  }
-                  tickCount={30}
+                  domain={[startTimestamp, endTimestamp]}
                   tickFormatter={(unixTime) =>
                     new Date(unixTime).toLocaleTimeString('es-ES', {
                       hour: '2-digit',
@@ -206,7 +183,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   ticks={[0, 1]}
                   tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
                   width={80}
-                  tick={{ fontSize: 14, fill: '#2d3748' }}
                 />
                 <Tooltip
                   labelFormatter={(unixTime) =>
@@ -222,14 +198,15 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   formatter={(value) => (value === 1 ? 'MARCHA' : 'PARO')}
                 />
                 <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
-                {selectedX && (
-                  <ReferenceLine
-                    x={selectedX}
-                    stroke="black"
-                    strokeWidth={2}
-                    label={`Estado: ${selectedState}`}
-                  />
-                )}
+
+                <ReferenceLine
+                  x={selectedX}
+                  stroke="black"
+                  strokeWidth={2}
+                  label={selectedInfo}
+                  ifOverflow="extendDomain"
+                  onMouseDown={handleMouseDown}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
