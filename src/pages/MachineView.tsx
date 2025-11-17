@@ -137,27 +137,30 @@ export default function MachineView({ machineId }: MachineViewProps) {
             </Box>
 
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid stroke="#ccc" strokeDasharray="3 3" /> {/* cuadrícula */}
-                <XAxis
-                  dataKey="x"
-                  type="number"
-                  domain={['auto', 'auto']}
-                  tickFormatter={(unixTime) =>
-                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-                  }
-                />
-                <YAxis
-               domain={[0, 1]}
-               ticks={[0, 1]}
-               tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-                />
-                <Tooltip />
-                {/* Rectángulo base de referencia */}
-                <ReferenceArea x1={inicioTimestamp} x2={finTimestamp} y1={0} y2={1} fill="#f0f0f0" />
-                <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+  <LineChart
+    data={chartData}
+    margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
+  >
+    <CartesianGrid stroke="#ccc" strokeDasharray="3 3" />
+    <XAxis
+      dataKey="x"
+      type="number"
+      domain={['auto', 'auto']}
+      tickFormatter={(unixTime) =>
+        new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      }
+    />
+    <YAxis
+      domain={[0, 1]}
+      ticks={[0, 1]}
+      tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+      width={80}
+      tick={{ fontSize: 14, fill: '#2d3748' }}
+    />
+    <Tooltip />
+    <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+  </LineChart>
+   </ResponsiveContainer>
           </CardContent>
         </Card>
 
