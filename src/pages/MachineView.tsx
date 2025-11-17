@@ -18,7 +18,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  ReferenceArea,
 } from 'recharts';
 
 interface Event {
@@ -41,43 +40,49 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [endDate, setEndDate] = useState<string>('');
 
   const fetchEvents = async () => {
+    console.log("🔎 fetchEvents ejecutado");
+    let url = "https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos";
+
+    if (startDate || endDate) {
+      const params = new URLSearchParams();
+      if (startDate) params.append("start", new Date(startDate).toISOString());
+      if (endDate) params.append("end", new Date(endDate).toISOString());
+      url += `?${params.toString()}`;
+    }
+
+    console.log("🌐 URL llamada:", url);
+
     try {
-      let url = `https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos`;
-      if (startDate || endDate) {
-        const params = new URLSearchParams();
-        if (startDate) params.append('start', new Date(startDate).toISOString());
-        if (endDate) params.append('end', new Date(endDate).toISOString());
-        url += `?${params.toString()}`;
-      }
-      console.log("URL llamada:", url);
       const res = await fetch(url);
+      console.log("📡 HTTP status:", res.status);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Respuesta no OK:", text);
+        return;
+      }
       const data = await res.json();
-      console.log("Eventos recibidos:", data);
+      console.log("📦 Eventos recibidos:", data);
       setEvents(data);
     } catch (err) {
-      console.error('Error al obtener eventos:', err);
+      console.error("❌ Error de fetch:", err);
     }
   };
 
+  // Se ejecuta al inicio y cada vez que cambian startDate o endDate
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [startDate, endDate]);
 
   const handleApply = () => {
     setCurrentFrequency(newFrequency);
-    console.log(`Nuevo valor aplicado: ${newFrequency} segundos`);
+    console.log(`⚙️ Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
   const chartData = events.map(ev => ({
     x: new Date(ev.hora).getTime(),
-    y: ev.estado === 'MARCHA' ? 1 : 0,
+    y: ev.estado === "MARCHA" ? 1 : 0,
   }));
-  console.log("chartData:", chartData);
-
-  // Definir rango inicial para ReferenceArea (ejemplo: últimas 24h)
-  const now = Date.now();
-  const inicioTimestamp = now - 24 * 60 * 60 * 1000;
-  const finTimestamp = now;
+  console.log("📊 chartData:", chartData);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
@@ -137,43 +142,34 @@ export default function MachineView({ machineId }: MachineViewProps) {
             </Box>
 
             <ResponsiveContainer width="100%" height={300}>
-  <LineChart
-    data={chartData}
-    margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
-  >
-    <CartesianGrid stroke="#ccc" strokeDasharray="3 3" />
-    <XAxis
-      dataKey="x"
-      type="number"
-      domain={['auto', 'auto']}
-      tickFormatter={(unixTime) =>
-        new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-      }
-    />
-    <YAxis
-      domain={[0, 1]}
-      ticks={[0, 1]}
-      tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-      width={80}
-      tick={{ fontSize: 14, fill: '#2d3748' }}
-    />
-    <Tooltip />
-    <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
-  </LineChart>
-   </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card elevation={3} sx={{ borderRadius: 2 }}>
-          <CardContent>
-            <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, marginBottom: 2 }}>
-              Análisis con IA (próximamente)
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#4a5568' }}>
-              Aquí podrás preguntar cosas como: <br />
-              • ¿Cuánto tiempo estuvo parada esta máquina hoy? <br />
-              • ¿Cuántas veces se reinició esta máquina esta semana?
-            </Typography>
+              <LineChart
+                data={chartData}
+                margin={{ top: 20, right: 30, left: 50, bottom: 20 }}
+              >
+                <CartesianGrid stroke="#ccc" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="x"
+                  type="number"
+                  domain={['auto', 'auto']}
+                  tickFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                  }
+                />
+                <YAxis
+                  domain={[0, 1]}
+                  ticks={[0, 1]}
+                  tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                  width={80}
+                  tick={{ fontSize: 14, fill: '#2d3748' }}
+                />
+                <Tooltip
+                  labelFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                  }
+                />
+                <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </Container>
