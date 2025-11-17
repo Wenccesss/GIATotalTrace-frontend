@@ -188,7 +188,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
       const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid <= ms) {
+      if (tMid < ms) {
         idx = mid;
         lo = mid + 1;
       } else {
