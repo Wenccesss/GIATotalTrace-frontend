@@ -76,7 +76,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
-  // Se ejecuta al inicio y cada vez que cambian startDate o endDate
   useEffect(() => {
     fetchEvents();
   }, [startDate, endDate]);
@@ -86,11 +85,22 @@ export default function MachineView({ machineId }: MachineViewProps) {
     console.log(`⚙️ Nuevo valor aplicado: ${newFrequency} segundos`);
   };
 
-  const chartData = events.map(ev => ({
+  // Transformación de eventos a chartData
+  let chartData = events.map(ev => ({
     x: new Date(ev.hora).getTime(),
     y: ev.estado === "MARCHA" ? 1 : 0,
   }));
-  console.log("📊 chartData:", chartData);
+
+  // Añadimos un punto "virtual" hasta la hora actual con el último estado
+  if (events.length > 0) {
+    const lastEvent = events[events.length - 1];
+    chartData.push({
+      x: Date.now(),
+      y: lastEvent.estado === "MARCHA" ? 1 : 0,
+    });
+  }
+
+  console.log("📊 chartData con punto actual:", chartData);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', paddingY: 4 }}>
