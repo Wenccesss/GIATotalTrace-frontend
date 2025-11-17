@@ -76,7 +76,16 @@ export default function MachineView({ machineId }: MachineViewProps) {
     try {
       const res = await fetch(url);
       const data = await res.json();
-      setEvents(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      // Normalizamos y ordenamos por tiempo (por seguridad)
+      const normalized = arr
+        .map((e: any) => ({
+          id: String(e.id ?? ''),
+          estado: (e.estado === 'MARCHA' ? 'MARCHA' : 'PARO') as 'MARCHA' | 'PARO',
+          hora: String(e.hora),
+        }))
+        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+      setEvents(normalized);
     } catch (err) {
       console.error('Error de fetch:', err);
       setEvents([]);
@@ -120,30 +129,49 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return Date.now();
   }, [endDate]);
 
-  // Timeline continuo con estado persistente por segundo
+  // Serie "sparse" (solo puntos de cambio) para rendimiento:
+  // - punto inicial con estado vigente en startTimestamp
+  // - cada evento dentro del rango
+  // - punto final en endTimestamp
   const chartData = useMemo(() => {
-    const timeline: { x: number; y: number }[] = [];
-    if (startTimestamp > endTimestamp) return timeline;
+    const series: { x: number; y: number }[] = [];
+    if (startTimestamp > endTimestamp) return series;
 
+    // Copia y orden
     const sorted = [...events].sort(
       (a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime()
     );
 
-    let currentState =
-      sorted.length > 0 && sorted[0].estado === 'MARCHA' ? 1 : 0;
-    let eventIndex = 0;
+    // Estado vigente al inicio del rango
+    const initialState = getStateAtRaw(sorted, startTimestamp);
+    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
-    for (let t = startTimestamp; t <= endTimestamp; t += 1000) {
-      while (
-        eventIndex < sorted.length &&
-        new Date(sorted[eventIndex].hora).getTime() <= t
-      ) {
-        currentState = sorted[eventIndex].estado === 'MARCHA' ? 1 : 0;
-        eventIndex++;
+    // Insertar cada cambio dentro del rango
+    for (const ev of sorted) {
+      const t = new Date(ev.hora).getTime();
+      if (t >= startTimestamp && t <= endTimestamp) {
+        series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
-      timeline.push({ x: t, y: currentState });
     }
-    return timeline;
+
+    // Punto final para mantener el tramo hasta el fin
+    const lastState = getStateAtRaw(sorted, endTimestamp);
+    series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
+
+    // Orden final y quitar duplicados de x si existen
+    series.sort((a, b) => a.x - b.x);
+    const dedup: { x: number; y: number }[] = [];
+    let lastX: number | null = null;
+    for (const p of series) {
+      if (p.x !== lastX) {
+        dedup.push(p);
+        lastX = p.x;
+      } else {
+        // Si hay dos puntos mismo x, dejamos el último y que representa el cambio
+        dedup[dedup.length - 1] = p;
+      }
+    }
+    return dedup;
   }, [events, startTimestamp, endTimestamp]);
 
   // Utilidades
@@ -157,15 +185,24 @@ export default function MachineView({ machineId }: MachineViewProps) {
       second: '2-digit',
     });
 
-  const getStateAt = (ms: number) => {
-    if (!chartData.length) return 'PARO';
-    // index aproximado por segundo desde el inicio
-    const idx = Math.floor((ms - chartData[0].x) / 1000);
-    if (idx <= 0) return chartData[0].y === 1 ? 'MARCHA' : 'PARO';
-    if (idx >= chartData.length) return chartData[chartData.length - 1].y === 1 ? 'MARCHA' : 'PARO';
-    const y = chartData[Math.min(chartData.length - 1, Math.max(0, idx))].y;
-    return y === 1 ? 'MARCHA' : 'PARO';
-  };
+  // Estado vigente en un ms usando eventos ordenados (búsqueda por límites)
+  function getStateAtRaw(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+    if (sortedEvents.length === 0) return 'PARO';
+    // Encontrar el último evento <= ms
+    let state: 'MARCHA' | 'PARO' = sortedEvents[0].estado;
+    for (let i = 0; i < sortedEvents.length; i++) {
+      const t = new Date(sortedEvents[i].hora).getTime();
+      if (t <= ms) {
+        state = sortedEvents[i].estado;
+      } else {
+        break;
+      }
+    }
+    return state;
+  }
+
+  // Wrapper usando `events` actuales
+  const getStateAt = (ms: number) => getStateAtRaw(events, ms);
 
   const formatDiff = (ms: number) => {
     const diffSec = Math.floor(Math.abs(ms) / 1000);
@@ -229,7 +266,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: oneMonthAgoIso, // no más allá de 1 mes
+                  min: oneMonthAgoIso, // no más allá de 1 mes atrás
                   max: nowIso,         // no más allá de ahora
                 }}
               />
@@ -240,7 +277,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: oneMonthAgoIso, // opcional para coherencia
+                  min: oneMonthAgoIso, // coherencia del rango
                   max: nowIso,         // bloquear futuro
                 }}
               />
