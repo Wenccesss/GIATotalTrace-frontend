@@ -33,7 +33,7 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
 
-  // Inputs pasivos (no disparan fetch hasta pulsar Filtrar)
+  // Inputs pasivos
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');
 
@@ -54,10 +54,16 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [diffInfo, setDiffInfo] = useState<string>('');
   const [hoverInfo, setHoverInfo] = useState<string>('');
 
-  // Ref del contenedor para overlay y conversión pixel↔tiempo
+  // Refs para overlay y elementos internos de Recharts
   const chartWrapRef = useRef<HTMLDivElement | null>(null);
+  const rechartsWrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // Límites del calendario (construidos desde hora local)
+  // Offsets medidos del área de plot (se actualizan en cada render y al redimensionar)
+  const plotOffsetsRef = useRef<{ left: number; right: number; top: number; bottom: number; width: number; height: number }>({
+    left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0
+  });
+
+  // Límites del calendario (derivados de hora local)
   const now = new Date();
   const nowIsoLocal = new Date(
     now.getFullYear(),
@@ -65,9 +71,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     now.getDate(),
     now.getHours(),
     now.getMinutes()
-  )
-    .toISOString()
-    .slice(0, 16);
+  ).toISOString().slice(0, 16);
   const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const oneMonthAgoIsoLocal = new Date(
     oneMonthAgo.getFullYear(),
@@ -75,14 +79,9 @@ export default function MachineView({ machineId }: MachineViewProps) {
     oneMonthAgo.getDate(),
     oneMonthAgo.getHours(),
     oneMonthAgo.getMinutes()
-  )
-    .toISOString()
-    .slice(0, 16);
+  ).toISOString().slice(0, 16);
 
-  // Márgenes del gráfico (deben coincidir con LineChart.margin)
-  const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
-
-  // Fetch de eventos (usa filtros activos; ISO solo para la petición)
+  // Fetch de eventos
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     setLoading(true);
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
@@ -114,12 +113,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
-  // Carga inicial
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  // Aplicar filtros al pulsar “Filtrar”
+  // Aplicar filtros
   const handleFilter = () => {
     const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
     const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
@@ -134,11 +132,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
     fetchEvents(startValid, endValid);
   };
 
-  // Rango activo de la gráfica (ms)
+  // Rango activo (ms)
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000; // último 1h por defecto
+    return Date.now() - 3600000;
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -146,18 +144,16 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return Date.now();
   }, [endMs]);
 
-  // Serie discreta basada en eventos (rendimiento) con eje continuo
+  // Serie discreta basada en eventos
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
 
-    const sorted = [...events]; // ya ordenado
+    const sorted = [...events];
 
-    // Estado vigente al inicio del rango
     const initialState = stateAt(sorted, startTimestamp);
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
-    // Eventos dentro del rango
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
@@ -165,7 +161,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
       }
     }
 
-    // Punto final para cerrar tramo
     const lastState = stateAt(sorted, endTimestamp);
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
 
@@ -173,7 +168,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return series;
   }, [events, startTimestamp, endTimestamp]);
 
-  // Formato de fecha para UI
+  // Formato de fecha
   const formatDateTime = (ms: number) =>
     new Date(ms).toLocaleString('es-ES', {
       year: 'numeric',
@@ -214,37 +209,80 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  // Conversión pixel ↔ tiempo (overlay propio)
+  // Medir offsets reales del área de plot de Recharts
+  const measurePlotOffsets = () => {
+    const wrap = chartWrapRef.current;
+    const wrapper = rechartsWrapperRef.current;
+    if (!wrap || !wrapper) return;
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const xAxis = wrapper.querySelector('.recharts-cartesian-axis.recharts-xAxis');
+    const yAxis = wrapper.querySelector('.recharts-cartesian-axis.recharts-yAxis');
+    const grid = wrapper.querySelector('.recharts-cartesian-grid');
+    const surface = wrapper.querySelector('.recharts-surface');
+
+    // Fallback: usamos el surface para estimar el área de plot
+    const surfaceRect = surface?.getBoundingClientRect() ?? wrapRect;
+
+    // Estimar márgenes internos: lo que queda entre el surface y el wrapper
+    const left = surfaceRect.left - wrapRect.left;
+    const right = wrapRect.right - surfaceRect.right;
+    const top = surfaceRect.top - wrapRect.top;
+    const bottom = wrapRect.bottom - surfaceRect.bottom;
+
+    const width = wrapRect.width - left - right;
+    const height = wrapRect.height - top - bottom;
+
+    plotOffsetsRef.current = { left, right, top, bottom, width, height };
+  };
+
+  useEffect(() => {
+    // medir al montar y cuando cambien datos/rangos
+    measurePlotOffsets();
+    const onResize = () => measurePlotOffsets();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [chartData, startTimestamp, endTimestamp]);
+
+  // Conversión pixel ↔ tiempo usando offsets medidos
   const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
   const pixelToTime = (clientX: number) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return startTimestamp;
-    const plotW = rect.width - MARGINS.left - MARGINS.right;
-    if (plotW <= 0) return startTimestamp;
-    const xInPlot = clamp(clientX - rect.left - MARGINS.left, 0, plotW);
-    const rel = xInPlot / plotW;
+    const wrap = chartWrapRef.current;
+    if (!wrap) return startTimestamp;
+    const rect = wrap.getBoundingClientRect();
+    const { left, width } = plotOffsetsRef.current;
+
+    const plotLeft = rect.left + left;
+    const plotRight = plotLeft + width;
+
+    const xClamped = clamp(clientX, plotLeft, plotRight);
+    const rel = (xClamped - plotLeft) / width;
     const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
-    return Math.round(ms / 1000) * 1000; // redondeo a segundo
+    return ms; // sin redondeo, máxima precisión
   };
 
   const timeToLeftPx = (ms: number) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect || endTimestamp === startTimestamp) return MARGINS.left;
-    const plotW = rect.width - MARGINS.left - MARGINS.right;
+    const wrap = chartWrapRef.current;
+    if (!wrap) return 0;
+    const rect = wrap.getBoundingClientRect();
+    const { left, width } = plotOffsetsRef.current;
+
+    if (endTimestamp === startTimestamp || width <= 0) return rect.left + left;
+
+    const plotLeft = rect.left + left;
     const rel = (ms - startTimestamp) / (endTimestamp - startTimestamp);
-    return MARGINS.left + clamp(rel, 0, 1) * plotW;
+    const clampedRel = clamp(rel, 0, 1);
+    return plotLeft + clampedRel * width;
   };
 
-  // Overlay: selección de línea por proximidad
+  // Overlay: elegir línea por proximidad
   const handleOverlayMouseDown = (e: React.MouseEvent) => {
     const clickX = e.clientX;
-    const rectLeft = chartWrapRef.current?.getBoundingClientRect().left ?? 0;
-    const clickRel = clickX - rectLeft;
     const x1 = timeToLeftPx(selectedX1);
     const x2 = timeToLeftPx(selectedX2);
-    const d1 = Math.abs(x1 - clickRel);
-    const d2 = Math.abs(x2 - clickRel);
+    const d1 = Math.abs(x1 - clickX);
+    const d2 = Math.abs(x2 - clickX);
     const threshold = 12; // px
     if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
     else if (d2 <= threshold) setDraggingLine('red');
@@ -278,7 +316,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
-  // Reiniciar líneas y paneles al cambiar el rango visible
+  // Reiniciar líneas y paneles al cambiar el rango
   useEffect(() => {
     setSelectedX1(startTimestamp);
     setSelectedX2(endTimestamp);
@@ -354,7 +392,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
               )}
             </Stack>
 
-            {/* Contenedor del gráfico + overlay de arrastre y hover */}
+            {/* Contenedor del gráfico + overlay */}
             <Box
               ref={chartWrapRef}
               sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
@@ -364,7 +402,19 @@ export default function MachineView({ machineId }: MachineViewProps) {
               onMouseLeave={handleOverlayMouseUp}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGINS}>
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
+                  ref={(el: any) => {
+                    // Guarda el div .recharts-wrapper para medir offsets
+                    // Recharts pasa un objeto con .container si usamos ref en LineChart
+                    // Hacemos fallback buscando el elemento más cercano
+                    try {
+                      const wrapperDiv = el?.container?.parentElement ?? chartWrapRef.current?.querySelector('.recharts-wrapper');
+                      if (wrapperDiv) rechartsWrapperRef.current = wrapperDiv as HTMLDivElement;
+                    } catch {}
+                  }}
+                >
                   <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
                   <XAxis
                     dataKey="x"
@@ -389,7 +439,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     width={80}
                     tick={{ fontSize: 12, fill: '#475569' }}
                   />
-                  {/* Sin Tooltip de Recharts para no mostrar mensajes automáticos */}
+                  {/* Sin Tooltip automático */}
                   <Line
                     type="stepAfter"
                     dataKey="y"
@@ -401,12 +451,12 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 </LineChart>
               </ResponsiveContainer>
 
-              {/* Overlay: líneas verticales posicionadas por píxeles */}
+              {/* Overlay: líneas verticales posicionadas por píxel exacto */}
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
+                  top: 0,
+                  bottom: 0,
                   left: timeToLeftPx(selectedX1),
                   width: 0,
                   borderLeft: '2px solid black',
@@ -416,8 +466,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
+                  top: 0,
+                  bottom: 0,
                   left: timeToLeftPx(selectedX2),
                   width: 0,
                   borderLeft: '2px solid red',
@@ -429,8 +479,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
+                  top: 0,
+                  bottom: 0,
                   left: timeToLeftPx(selectedX1) - 6,
                   width: 12,
                   cursor: 'ew-resize',
@@ -440,8 +490,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
+                  top: 0,
+                  bottom: 0,
                   left: timeToLeftPx(selectedX2) - 6,
                   width: 12,
                   cursor: 'ew-resize',
