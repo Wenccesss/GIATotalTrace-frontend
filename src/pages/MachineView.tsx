@@ -16,7 +16,6 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
@@ -24,7 +23,7 @@ import {
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
-  hora: string; // ISO datetime string
+  hora: string; // ISO datetime
 }
 
 interface MachineViewProps {
@@ -34,47 +33,64 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
 
-  // Inputs pasivos
+  // Inputs pasivos (no disparan fetch hasta pulsar Filtrar)
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');
 
-  // Filtros activos
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  // Filtros activos como timestamps (ms)
+  const [startMs, setStartMs] = useState<number | null>(null);
+  const [endMs, setEndMs] = useState<number | null>(null);
 
   // Datos y carga
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Líneas verticales y panel de info
+  // Líneas verticales y paneles de info
   const [selectedX1, setSelectedX1] = useState<number>(Date.now());
   const [selectedX2, setSelectedX2] = useState<number>(Date.now());
   const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
   const [selectedInfo1, setSelectedInfo1] = useState<string>('');
   const [selectedInfo2, setSelectedInfo2] = useState<string>('');
   const [diffInfo, setDiffInfo] = useState<string>('');
+  const [hoverInfo, setHoverInfo] = useState<string>('');
 
-  // Ref del contenedor para overlay y mapeo pixel↔tiempo
+  // Ref del contenedor para overlay y conversión pixel↔tiempo
   const chartWrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Límites del calendario
-  const nowIso = new Date().toISOString().slice(0, 16); // yyyy-MM-ddTHH:mm
-  const oneMonthAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  // Límites del calendario (construidos desde hora local)
+  const now = new Date();
+  const nowIsoLocal = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes()
+  )
+    .toISOString()
+    .slice(0, 16);
+  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const oneMonthAgoIsoLocal = new Date(
+    oneMonthAgo.getFullYear(),
+    oneMonthAgo.getMonth(),
+    oneMonthAgo.getDate(),
+    oneMonthAgo.getHours(),
+    oneMonthAgo.getMinutes()
+  )
     .toISOString()
     .slice(0, 16);
 
   // Márgenes del gráfico (deben coincidir con LineChart.margin)
   const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
 
-  // Fetch de eventos (usa filtros activos)
-  const fetchEvents = async (start?: string, end?: string) => {
+  // Fetch de eventos (usa filtros activos; ISO solo para la petición)
+  const fetchEvents = async (start?: number | null, end?: number | null) => {
     setLoading(true);
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
 
     if (start || end) {
       const params = new URLSearchParams();
-      if (start) params.append('start', new Date(start).toISOString());
-      if (end) params.append('end', new Date(end).toISOString());
+      if (start) params.append('start', new Date(start!).toISOString());
+      if (end) params.append('end', new Date(end!).toISOString());
       url += `?${params.toString()}`;
     }
 
@@ -103,46 +119,42 @@ export default function MachineView({ machineId }: MachineViewProps) {
     fetchEvents();
   }, []);
 
-  // Aplicar filtros solo al pulsar “Filtrar”
+  // Aplicar filtros al pulsar “Filtrar”
   const handleFilter = () => {
-    const startValid = startDateInput
-      ? Math.max(new Date(startDateInput).getTime(), new Date(oneMonthAgoIso).getTime())
-      : undefined;
-    const endValid = endDateInput
-      ? Math.min(new Date(endDateInput).getTime(), new Date(nowIso).getTime())
-      : undefined;
+    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
 
-    const startISO = startValid ? new Date(startValid).toISOString().slice(0, 16) : '';
-    const endISO = endValid ? new Date(endValid).toISOString().slice(0, 16) : '';
+    const minStart = oneMonthAgo.getTime();
+    const maxEnd = now.getTime();
+    const startValid = startLocalMs ? Math.max(startLocalMs, minStart) : null;
+    const endValid = endLocalMs ? Math.min(endLocalMs, maxEnd) : null;
 
-    setStartDate(startISO);
-    setEndDate(endISO);
-    fetchEvents(startISO, endISO);
+    setStartMs(startValid);
+    setEndMs(endValid);
+    fetchEvents(startValid, endValid);
   };
 
-  // Rango activo de la gráfica
+  // Rango activo de la gráfica (ms)
   const startTimestamp = useMemo(() => {
-    if (startDate) return new Date(startDate).getTime();
+    if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
     return Date.now() - 3600000; // último 1h por defecto
-  }, [startDate, events]);
+  }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
-    if (endDate) return new Date(endDate).getTime();
+    if (endMs !== null) return endMs;
     return Date.now();
-  }, [endDate]);
+  }, [endMs]);
 
-  // Serie discreta basada en eventos para rendimiento
+  // Serie discreta basada en eventos (rendimiento) con eje continuo
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
 
-    const sorted = [...events].sort(
-      (a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime()
-    );
+    const sorted = [...events]; // ya ordenado
 
     // Estado vigente al inicio del rango
-    const initialState = getStateAtRaw(sorted, startTimestamp);
+    const initialState = stateAt(sorted, startTimestamp);
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
     // Eventos dentro del rango
@@ -154,14 +166,14 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
 
     // Punto final para cerrar tramo
-    const lastState = getStateAtRaw(sorted, endTimestamp);
+    const lastState = stateAt(sorted, endTimestamp);
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
 
     series.sort((a, b) => a.x - b.x);
     return series;
   }, [events, startTimestamp, endTimestamp]);
 
-  // Utilidades
+  // Formato de fecha para UI
   const formatDateTime = (ms: number) =>
     new Date(ms).toLocaleString('es-ES', {
       year: 'numeric',
@@ -172,22 +184,27 @@ export default function MachineView({ machineId }: MachineViewProps) {
       second: '2-digit',
     });
 
-  function getStateAtRaw(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+  // Estado vigente en ms (búsqueda binaria: último evento con hora <= ms)
+  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
     if (sortedEvents.length === 0) return 'PARO';
-    let state: 'MARCHA' | 'PARO' = sortedEvents[0].estado;
-    for (let i = 0; i < sortedEvents.length; i++) {
-      const t = new Date(sortedEvents[i].hora).getTime();
-      if (t <= ms) {
-        state = sortedEvents[i].estado;
+    let lo = 0;
+    let hi = sortedEvents.length - 1;
+    let idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const tMid = new Date(sortedEvents[mid].hora).getTime();
+      if (tMid <= ms) {
+        idx = mid;
+        lo = mid + 1;
       } else {
-        break;
+        hi = mid - 1;
       }
     }
-    return state;
+    if (idx === -1) return sortedEvents[0].estado;
+    return sortedEvents[idx].estado;
   }
 
-  const getStateAt = (ms: number) => getStateAtRaw(events, ms);
-
+  // Diferencia entre líneas
   const formatDiff = (ms: number) => {
     const diffSec = Math.floor(Math.abs(ms) / 1000);
     const days = Math.floor(diffSec / 86400);
@@ -208,7 +225,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const xInPlot = clamp(clientX - rect.left - MARGINS.left, 0, plotW);
     const rel = xInPlot / plotW;
     const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
-    return Math.round(ms / 1000) * 1000; // a segundo
+    return Math.round(ms / 1000) * 1000; // redondeo a segundo
   };
 
   const timeToLeftPx = (ms: number) => {
@@ -219,20 +236,27 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return MARGINS.left + clamp(rel, 0, 1) * plotW;
   };
 
-  // Overlay de arrastre
+  // Overlay: selección de línea por proximidad
   const handleOverlayMouseDown = (e: React.MouseEvent) => {
-    // Elegimos línea por proximidad al click
     const clickX = e.clientX;
-    const d1 = Math.abs(timeToLeftPx(selectedX1) - (chartWrapRef.current?.getBoundingClientRect().left ?? 0) - (clickX - (chartWrapRef.current?.getBoundingClientRect().left ?? 0)));
-    const d2 = Math.abs(timeToLeftPx(selectedX2) - (chartWrapRef.current?.getBoundingClientRect().left ?? 0) - (clickX - (chartWrapRef.current?.getBoundingClientRect().left ?? 0)));
+    const rectLeft = chartWrapRef.current?.getBoundingClientRect().left ?? 0;
+    const clickRel = clickX - rectLeft;
+    const x1 = timeToLeftPx(selectedX1);
+    const x2 = timeToLeftPx(selectedX2);
+    const d1 = Math.abs(x1 - clickRel);
+    const d2 = Math.abs(x2 - clickRel);
     const threshold = 12; // px
     if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
     else if (d2 <= threshold) setDraggingLine('red');
   };
 
+  // Overlay: mover y hover info en tiempo real
   const handleOverlayMouseMove = (e: React.MouseEvent) => {
-    if (!draggingLine) return;
     const xMs = pixelToTime(e.clientX);
+    const estadoHover = stateAt(events, xMs);
+    setHoverInfo(`${estadoHover} | ${formatDateTime(xMs)}`);
+
+    if (!draggingLine) return;
     if (draggingLine === 'black') setSelectedX1(xMs);
     if (draggingLine === 'red') setSelectedX2(xMs);
   };
@@ -241,10 +265,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
     if (!draggingLine) return;
 
     if (draggingLine === 'black') {
-      const estado = getStateAt(selectedX1);
+      const estado = stateAt(events, selectedX1);
       setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
     } else {
-      const estado = getStateAt(selectedX2);
+      const estado = stateAt(events, selectedX2);
       setSelectedInfo2(`${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
@@ -254,13 +278,14 @@ export default function MachineView({ machineId }: MachineViewProps) {
     }
   };
 
-  // Inicializar líneas al rango visible cuando cambia
+  // Reiniciar líneas y paneles al cambiar el rango visible
   useEffect(() => {
     setSelectedX1(startTimestamp);
     setSelectedX2(endTimestamp);
     setSelectedInfo1('');
     setSelectedInfo2('');
     setDiffInfo('');
+    setHoverInfo('');
   }, [startTimestamp, endTimestamp]);
 
   return (
@@ -288,8 +313,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: oneMonthAgoIso, // no más allá de 1 mes
-                  max: nowIso,         // no más allá de ahora
+                  min: oneMonthAgoIsoLocal,
+                  max: nowIsoLocal,
                 }}
               />
               <TextField
@@ -299,8 +324,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  min: oneMonthAgoIso, // coherencia del rango
-                  max: nowIso,         // bloquear futuro
+                  min: oneMonthAgoIsoLocal,
+                  max: nowIsoLocal,
                 }}
               />
               <Button variant="contained" color="primary" onClick={handleFilter} disabled={loading}>
@@ -322,9 +347,14 @@ export default function MachineView({ machineId }: MachineViewProps) {
                   {diffInfo}
                 </Typography>
               )}
+              {hoverInfo && (
+                <Typography variant="body1" sx={{ ml: 2, color: '#475569', fontWeight: 500 }}>
+                  {hoverInfo}
+                </Typography>
+              )}
             </Stack>
 
-            {/* Contenedor del gráfico + overlay de arrastre */}
+            {/* Contenedor del gráfico + overlay de arrastre y hover */}
             <Box
               ref={chartWrapRef}
               sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
@@ -359,19 +389,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     width={80}
                     tick={{ fontSize: 12, fill: '#475569' }}
                   />
-                  <Tooltip
-                    labelFormatter={(unixTime) =>
-                      new Date(unixTime).toLocaleString('es-ES', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                    }
-                    formatter={(value) => (value === 1 ? 'MARCHA' : 'PARO')}
-                  />
+                  {/* Sin Tooltip de Recharts para no mostrar mensajes automáticos */}
                   <Line
                     type="stepAfter"
                     dataKey="y"
@@ -407,7 +425,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 }}
               />
 
-              {/* Handles para facilitar el arrastre (capturan el mouse) */}
+              {/* Handles transparentes para facilitar el arrastre */}
               <Box
                 sx={{
                   position: 'absolute',
