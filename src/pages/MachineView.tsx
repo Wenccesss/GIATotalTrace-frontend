@@ -165,7 +165,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const hours = Math.floor((diffSec % 86400) / 3600);
     const minutes = Math.floor((diffSec % 3600) / 60);
     const seconds = diffSec % 60;
-    return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+    return ` ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
   // Dragging handlers
@@ -184,10 +184,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
 
     if (draggingLine === 'black') {
       const estado = getStateAt(selectedX1);
-      setSelectedInfo1(`Negra → Estado: ${estado} | ${formatDateTime(selectedX1)}`);
+      setSelectedInfo1(` ${estado} | ${formatDateTime(selectedX1)}`);
     } else {
       const estado = getStateAt(selectedX2);
-      setSelectedInfo2(`Roja → Estado: ${estado} | ${formatDateTime(selectedX2)}`);
+      setSelectedInfo2(` ${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
 
