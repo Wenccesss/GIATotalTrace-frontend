@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   Box,
   Container,
@@ -68,6 +68,43 @@ export default function MachineView({ machineId }: MachineViewProps) {
   ).toISOString().slice(0, 16);
 
   const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
+
+  // Área de plot medida con precisión
+  const [plotLeft, setPlotLeft] = useState(0);
+  const [plotTop, setPlotTop] = useState(0);
+  const [plotRight, setPlotRight] = useState(0);
+  const [plotBottom, setPlotBottom] = useState(0);
+  const [plotWidth, setPlotWidth] = useState(0);
+  const [plotHeight, setPlotHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = chartWrapRef.current;
+    if (!el) return;
+
+    const updatePlot = () => {
+      const rect = el.getBoundingClientRect();
+      const left = MARGINS.left;
+      const right = rect.width - MARGINS.right;
+      const top = MARGINS.top;
+      const bottom = rect.height - MARGINS.bottom;
+
+      setPlotLeft(left);
+      setPlotRight(right);
+      setPlotTop(top);
+      setPlotBottom(bottom);
+      setPlotWidth(Math.max(0, right - left));
+      setPlotHeight(Math.max(0, bottom - top));
+    };
+
+    updatePlot();
+
+    const ro = new ResizeObserver(() => {
+      updatePlot();
+    });
+    ro.observe(el);
+
+    return () => ro.disconnect();
+  }, []);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     setLoading(true);
@@ -188,23 +225,33 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const seconds = diffSec % 60;
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
+
+  const domainSpan = Math.max(1, endTimestamp - startTimestamp);
+
+   const timeToLeftPx = (ms: number) => {
+    if (plotWidth <= 0) return plotLeft; // fallback seguro
+    const rel = (ms - startTimestamp) / domainSpan;
+    const clamped = Math.max(0, Math.min(1, rel));
+    return plotLeft + clamped * plotWidth;
+  };
+
+  const pixelToTime = (clientX: number) => {
+    const el = chartWrapRef.current;
+    if (!el || plotWidth <= 0) return startTimestamp;
+    const rect = el.getBoundingClientRect();
+    const relX = clientX - rect.left - plotLeft;
+    const rel = Math.max(0, Math.min(1, relX / plotWidth));
+    return startTimestamp + rel * domainSpan;
+  };
+
   const handleOverlayMouseDown = (line: 'black' | 'red') => {
     setDraggingLine(line);
   };
 
   const handleOverlayMouseMove = (e: React.MouseEvent) => {
     if (!draggingLine) return;
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const relX = e.clientX - rect.left - MARGINS.left;
-    const plotW = rect.width - MARGINS.left - MARGINS.right;
-    const rel = Math.max(0, Math.min(1, relX / plotW));
-    const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
-
-    const estadoHover = stateAt(events, ms);
-    setHoverInfo(`${estadoHover} | ${formatDateTime(ms)}`);
-
+    const ms = pixelToTime(e.clientX);
+    setHoverInfo(`${stateAt(events, ms)} | ${formatDateTime(ms)}`);
     if (draggingLine === 'black') setSelectedX1(ms);
     if (draggingLine === 'red') setSelectedX2(ms);
   };
@@ -218,12 +265,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
       setSelectedInfo2(`${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
-    if (selectedX1 && selectedX2) {
-      setDiffInfo(formatDiff(selectedX2 - selectedX1));
-    }
+    if (selectedX1 && selectedX2) setDiffInfo(formatDiff(selectedX2 - selectedX1));
   };
 
   useEffect(() => {
+    // Reset seguro en cada cambio de rango
     setSelectedX1(startTimestamp);
     setSelectedX2(endTimestamp);
     setSelectedInfo1('');
@@ -340,30 +386,26 @@ export default function MachineView({ machineId }: MachineViewProps) {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
+                  top: plotTop,
                   bottom: -10, // sobresale un poco por debajo
-                  left:
-                    ((selectedX1 - startTimestamp) / (endTimestamp - startTimestamp)) *
-                      (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) +
-                    MARGINS.left,
+                  left: timeToLeftPx(selectedX1),
                   width: 2,
                   backgroundColor: 'black',
                   cursor: 'ew-resize',
+                  zIndex: 2,
                 }}
                 onMouseDown={() => handleOverlayMouseDown('black')}
               />
               <Box
                 sx={{
                   position: 'absolute',
-                  top: MARGINS.top,
+                  top: plotTop,
                   bottom: -10, // sobresale un poco por debajo
-                  left:
-                    ((selectedX2 - startTimestamp) / (endTimestamp - startTimestamp)) *
-                      (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) +
-                    MARGINS.left,
+                  left: timeToLeftPx(selectedX2),
                   width: 2,
                   backgroundColor: 'red',
                   cursor: 'ew-resize',
+                  zIndex: 2,
                 }}
                 onMouseDown={() => handleOverlayMouseDown('red')}
               />
