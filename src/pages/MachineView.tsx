@@ -26,6 +26,18 @@ interface Event {
   hora: string;
 }
 
+// Función compartida para calcular el estado en un timestamp
+function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+  if (sortedEvents.length === 0) return 'PARO';
+  let lo = 0, hi = sortedEvents.length - 1, idx = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const tMid = new Date(sortedEvents[mid].hora).getTime();
+    if (tMid <= ms) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
+}
+
 interface TimeChartProps {
   start: number;
   end: number;
@@ -72,17 +84,6 @@ function TimeChart({
       minute: '2-digit',
       second: '2-digit',
     });
-
-  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
-    if (sortedEvents.length === 0) return 'PARO';
-    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid <= ms) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
-    }
-    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
-  }
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: 380 }}>
@@ -167,7 +168,6 @@ function TimeChart({
     </Box>
   );
 }
-
 export default function MachineView({ machineId }: { machineId: string }) {
   const [, setLocation] = useLocation();
   const [events, setEvents] = useState<Event[]>([]);
@@ -219,7 +219,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     if (startTimestamp > endTimestamp) return series;
 
     const sorted = [...events];
-    const initialState = sorted.length ? stateAt(sorted, startTimestamp) : 'PARO';
+    const initialState = stateAt(sorted, startTimestamp);
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
     for (const ev of sorted) {
@@ -229,11 +229,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
       }
     }
 
-    const finalState = sorted.length ? stateAt(sorted, endTimestamp) : initialState;
-  series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+    const finalState = stateAt(sorted, endTimestamp);
+    series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
 
-  series.sort((a, b) => a.x - b.x);
-  return series;
+    series.sort((a, b) => a.x - b.x);
+    return series;
 }, [events, startTimestamp, endTimestamp]);
 
 const handleFilter = () => {
