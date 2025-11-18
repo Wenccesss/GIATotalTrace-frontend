@@ -19,6 +19,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   ReferenceLine,
+  ReferenceDot,
 } from 'recharts';
 
 interface Event {
@@ -48,8 +49,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [selectedInfo2, setSelectedInfo2] = useState<string>('');
   const [diffInfo, setDiffInfo] = useState<string>('');
   const [hoverInfo, setHoverInfo] = useState<string>('');
-
-  const chartWrapRef = useRef<HTMLDivElement | null>(null);
 
   const now = new Date();
   const nowIsoLocal = new Date(
@@ -189,35 +188,16 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const seconds = diffSec % 60;
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
-  const handleOverlayMouseDown = (e: React.MouseEvent) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const clickRelX = e.clientX - rect.left;
-    const x1 = ((selectedX1 - startTimestamp) / (endTimestamp - startTimestamp)) * (rect.width - MARGINS.left - MARGINS.right) + MARGINS.left;
-    const x2 = ((selectedX2 - startTimestamp) / (endTimestamp - startTimestamp)) * (rect.width - MARGINS.left - MARGINS.right) + MARGINS.left;
-    const d1 = Math.abs(x1 - clickRelX);
-    const d2 = Math.abs(x2 - clickRelX);
-    const threshold = 12;
-    if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
-    else if (d2 <= threshold) setDraggingLine('red');
-  };
-
-  const handleOverlayMouseMove = (e: React.MouseEvent) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const relX = e.clientX - rect.left - MARGINS.left;
-    const plotW = rect.width - MARGINS.left - MARGINS.right;
-    const rel = Math.max(0, Math.min(1, relX / plotW));
-    const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
-
+  const handleChartMouseMove = (e: any) => {
+    if (!e || typeof e.activeLabel !== 'number') return;
+    const ms = e.activeLabel;
     const estadoHover = stateAt(events, ms);
     setHoverInfo(`${estadoHover} | ${formatDateTime(ms)}`);
-
     if (draggingLine === 'black') setSelectedX1(ms);
     if (draggingLine === 'red') setSelectedX2(ms);
   };
 
-  const handleOverlayMouseUp = () => {
+  const handleChartMouseUp = () => {
     if (draggingLine === 'black') {
       const estado = stateAt(events, selectedX1);
       setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
@@ -300,78 +280,66 @@ export default function MachineView({ machineId }: MachineViewProps) {
               )}
             </Stack>
 
-            <Box
-              ref={chartWrapRef}
-              sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
-              onMouseDown={handleOverlayMouseDown}
-              onMouseMove={handleOverlayMouseMove}
-              onMouseUp={handleOverlayMouseUp}
-              onMouseLeave={handleOverlayMouseUp}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGINS}>
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="x"
-                    type="number"
-                    domain={[startTimestamp, endTimestamp]}
-                    tickFormatter={(unixTime) =>
-                      new Date(unixTime).toLocaleString('es-ES', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                    }
-                    tick={{ fontSize: 12, fill: '#475569' }}
-                  />
-                  <YAxis
-                    domain={[0, 1]}
-                    ticks={[0, 1]}
-                    tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-                    width={80}
-                    tick={{ fontSize: 12, fill: '#475569' }}
-                  />
-                  <Line
-                    type="stepAfter"
-                    dataKey="y"
-                    stroke="#667eea"
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                  {/* ReferenceLines visibles */}
-                  <ReferenceLine x={selectedX1} stroke="black" strokeWidth={2} />
-                  <ReferenceLine x={selectedX2} stroke="red" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-
-              {/* Overlay invisible para arrastre */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: ((selectedX1 - startTimestamp) / (endTimestamp - startTimestamp)) * (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) + MARGINS.left - 6,
-                  width: 12,
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={() => setDraggingLine('black')}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: ((selectedX2 - startTimestamp) / (endTimestamp - startTimestamp)) * (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) + MARGINS.left - 6,
-                  width: 12,
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={() => setDraggingLine('red')}
-              />
-            </Box>
+            <ResponsiveContainer width="100%" height={380}>
+              <LineChart
+                data={chartData}
+                margin={MARGINS}
+                onMouseMove={handleChartMouseMove}
+                onMouseUp={handleChartMouseUp}
+              >
+                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="x"
+                  type="number"
+                  domain={[startTimestamp, endTimestamp]}
+                  tickFormatter={(unixTime) =>
+                    new Date(unixTime).toLocaleString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
+                  }
+                  tick={{ fontSize: 12, fill: '#475569' }}
+                />
+                <YAxis
+                  domain={[0, 1]}
+                  ticks={[0, 1]}
+                  tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                  width={80}
+                  tick={{ fontSize: 12, fill: '#475569' }}
+                />
+                <Line
+                  type="stepAfter"
+                  dataKey="y"
+                  stroke="#667eea"
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+                {/* Líneas y handles visibles */}
+                <ReferenceLine x={selectedX1} stroke="black" strokeWidth={2} />
+                <ReferenceDot
+                  x={selectedX1}
+                  y={0.5}
+                  r={6}
+                  fill="black"
+                  stroke="none"
+                  onMouseDown={() => setDraggingLine('black')}
+                />
+                <ReferenceLine x={selectedX2} stroke="red" strokeWidth={2} />
+                <ReferenceDot
+                  x={selectedX2}
+                  y={0.5}
+                  r={6}
+                  fill="red"
+                  stroke="none"
+                  onMouseDown={() => setDraggingLine('red')}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </Container>
