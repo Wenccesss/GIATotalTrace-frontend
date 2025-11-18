@@ -242,7 +242,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     if (startTimestamp > endTimestamp) return series;
     const sorted = [...events];
     const initialState = sorted.length ? sorted[0].estado : 'PARO';
-    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0
+    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0}
       for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
