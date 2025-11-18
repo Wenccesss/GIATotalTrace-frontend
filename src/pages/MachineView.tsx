@@ -60,18 +60,28 @@ function TimeChart({
   setSelectedX2,
 }: TimeChartProps) {
   const chartRef = useRef<any>(null);
-  const [hoverInfo, setHoverInfo] = useState<{ left: number; estado: string; fecha: string } | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{ left: number; top: number; estado: string; fecha: string } | null>(null);
 
-  const timeToPixel = (ms: number) => {
-    const scale = chartRef.current?.state?.xAxisMap?.x?.scale;
-    return scale ? scale(ms) : 0;
+  const getScale = () => chartRef.current?.state?.xAxisMap?.x?.scale;
+  const getOffsets = () => {
+    const s = chartRef.current?.state;
+    const left = s?.offsets?.left ?? s?.margin?.left ?? 0;
+    const top = s?.offsets?.top ?? s?.margin?.top ?? 0;
+    return { left, top };
+  };
+
+  const timeToPixelAbs = (ms: number) => {
+    const scale = getScale();
+    const { left } = getOffsets();
+    return scale ? left + scale(ms) : left;
   };
 
   const pixelToTime = (clientX: number) => {
-    const scale = chartRef.current?.state?.xAxisMap?.x?.scale;
+    const scale = getScale();
     if (!scale) return start;
     const rect = chartRef.current.container.getBoundingClientRect();
-    const relX = clientX - rect.left;
+    const { left } = getOffsets();
+    const relX = clientX - rect.left - left;
     return scale.invert(relX);
   };
 
@@ -97,10 +107,18 @@ function TimeChart({
       <Box
         sx={{ position: 'absolute', inset: 0, zIndex: 2 }}
         onMouseMove={(e) => {
-          const ms = pixelToTime(e.clientX);
+          const scale = getScale();
+          if (!scale || !chartRef.current?.container) return;
+          const rect = chartRef.current.container.getBoundingClientRect();
+          const { left, top } = getOffsets();
+          const relX = e.clientX - rect.left - left;
+          const relY = e.clientY - rect.top - top;
+          if (relX < 0) return;
+          const ms = scale.invert(relX);
           const estado = stateAt(events, ms);
           setHoverInfo({
-            left: e.clientX,
+            left: rect.left + left + relX + 10,
+            top: rect.top + top + relY + 10,
             estado,
             fecha: formatDateTime(ms),
           });
@@ -108,13 +126,12 @@ function TimeChart({
         onMouseLeave={() => setHoverInfo(null)}
       />
 
-      {/* Tooltip flotante */}
       {hoverInfo && (
         <Box
           sx={{
             position: 'fixed',
-            left: hoverInfo.left + 10,
-            top: 100,
+            left: hoverInfo.left,
+            top: hoverInfo.top,
             background: 'white',
             border: '1px solid #ccc',
             borderRadius: 4,
@@ -122,15 +139,16 @@ function TimeChart({
             fontSize: 12,
             pointerEvents: 'none',
             zIndex: 10,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
           }}
         >
           {hoverInfo.estado} | {hoverInfo.fecha}
         </Box>
       )}
 
-      {/* Líneas verticales arrastrables */}
+      {/* Líneas arrastrables */}
       <Box
-        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixel(selectedX1), width: 2, backgroundColor: 'black', cursor: 'ew-resize', zIndex: 4 }}
+        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixelAbs(selectedX1), width: 2, backgroundColor: 'black', cursor: 'ew-resize', zIndex: 4 }}
         onMouseDown={(e) => {
           e.preventDefault();
           const move = (ev: MouseEvent) => setSelectedX1(pixelToTime(ev.clientX));
@@ -143,7 +161,7 @@ function TimeChart({
         }}
       />
       <Box
-        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixel(selectedX2), width: 2, backgroundColor: 'red', cursor: 'ew-resize', zIndex: 4 }}
+        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixelAbs(selectedX2), width: 2, backgroundColor: 'red', cursor: 'ew-resize', zIndex: 4 }}
         onMouseDown={(e) => {
           e.preventDefault();
           const move = (ev: MouseEvent) => setSelectedX2(pixelToTime(ev.clientX));
@@ -196,7 +214,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000;
+    return Date.now() - 3600000; // último tramo por defecto: 1h atrás
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -232,11 +250,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
     setStartMs(startLocalMs);
     setEndMs(endLocalMs);
     fetchEvents(startLocalMs, endLocalMs);
-    // Mantén las líneas dentro del nuevo rango si existen
-    if (startLocalMs && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
-    if (endLocalMs && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
-    if (startLocalMs && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
-    if (endLocalMs && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
+    // Mantén las líneas dentro del nuevo rango
+    if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
+    if (endLocalMs !== null && selectedX1 > endLocalMs) setSelectedX1(endLocalMs ?? selectedX1);
+    if (startLocalMs !== null && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
+    if (endLocalMs !== null && selectedX2 > endLocalMs) setSelectedX2(endLocalMs ?? selectedX2);
   };
 
   return (
@@ -291,4 +309,4 @@ export default function MachineView({ machineId }: { machineId: string }) {
       </Container>
     </Box>
   );
-  }
+}
