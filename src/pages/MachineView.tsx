@@ -189,27 +189,35 @@ export default function MachineView({ machineId }: MachineViewProps) {
     const seconds = diffSec % 60;
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
-
-  const handleMouseDown = (e: any) => {
-    if (!e || typeof e.activeLabel !== 'number') return;
-    const x = e.activeLabel;
-    const d1 = Math.abs(x - selectedX1);
-    const d2 = Math.abs(x - selectedX2);
-    const threshold = 1000;
+  const handleOverlayMouseDown = (e: React.MouseEvent) => {
+    const rect = chartWrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clickRelX = e.clientX - rect.left;
+    const x1 = ((selectedX1 - startTimestamp) / (endTimestamp - startTimestamp)) * (rect.width - MARGINS.left - MARGINS.right) + MARGINS.left;
+    const x2 = ((selectedX2 - startTimestamp) / (endTimestamp - startTimestamp)) * (rect.width - MARGINS.left - MARGINS.right) + MARGINS.left;
+    const d1 = Math.abs(x1 - clickRelX);
+    const d2 = Math.abs(x2 - clickRelX);
+    const threshold = 12;
     if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
     else if (d2 <= threshold) setDraggingLine('red');
   };
 
-  const handleMouseMove = (e: any) => {
-    if (!e || typeof e.activeLabel !== 'number') return;
-    const x = e.activeLabel;
-    const estado = stateAt(events, x);
-    setHoverInfo(`${estado} | ${formatDateTime(x)}`);
-    if (draggingLine === 'black') setSelectedX1(x);
-    if (draggingLine === 'red') setSelectedX2(x);
+  const handleOverlayMouseMove = (e: React.MouseEvent) => {
+    const rect = chartWrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const relX = e.clientX - rect.left - MARGINS.left;
+    const plotW = rect.width - MARGINS.left - MARGINS.right;
+    const rel = Math.max(0, Math.min(1, relX / plotW));
+    const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
+
+    const estadoHover = stateAt(events, ms);
+    setHoverInfo(`${estadoHover} | ${formatDateTime(ms)}`);
+
+    if (draggingLine === 'black') setSelectedX1(ms);
+    if (draggingLine === 'red') setSelectedX2(ms);
   };
 
-  const handleMouseUp = () => {
+  const handleOverlayMouseUp = () => {
     if (draggingLine === 'black') {
       const estado = stateAt(events, selectedX1);
       setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
@@ -256,10 +264,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{
-                  min: oneMonthAgoIsoLocal,
-                  max: nowIsoLocal,
-                }}
+                inputProps={{ min: oneMonthAgoIsoLocal, max: nowIsoLocal }}
               />
               <TextField
                 label="Fin"
@@ -267,10 +272,7 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{
-                  min: oneMonthAgoIsoLocal,
-                  max: nowIsoLocal,
-                }}
+                inputProps={{ min: oneMonthAgoIsoLocal, max: nowIsoLocal }}
               />
               <Button variant="contained" color="primary" onClick={handleFilter} disabled={loading}>
                 {loading ? 'Cargando…' : 'Filtrar'}
@@ -301,10 +303,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
             <Box
               ref={chartWrapRef}
               sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onMouseDown={handleOverlayMouseDown}
+              onMouseMove={handleOverlayMouseMove}
+              onMouseUp={handleOverlayMouseUp}
+              onMouseLeave={handleOverlayMouseUp}
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={MARGINS}>
@@ -340,11 +342,35 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     dot={false}
                     isAnimationActive={false}
                   />
-                  {/* ReferenceLines integradas en el gráfico */}
+                  {/* ReferenceLines visibles */}
                   <ReferenceLine x={selectedX1} stroke="black" strokeWidth={2} />
                   <ReferenceLine x={selectedX2} stroke="red" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
+
+              {/* Overlay invisible para arrastre */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: ((selectedX1 - startTimestamp) / (endTimestamp - startTimestamp)) * (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) + MARGINS.left - 6,
+                  width: 12,
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={() => setDraggingLine('black')}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: MARGINS.top,
+                  bottom: MARGINS.bottom,
+                  left: ((selectedX2 - startTimestamp) / (endTimestamp - startTimestamp)) * (chartWrapRef.current?.offsetWidth ?? 0 - MARGINS.left - MARGINS.right) + MARGINS.left - 6,
+                  width: 12,
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={() => setDraggingLine('red')}
+              />
             </Box>
           </CardContent>
         </Card>
