@@ -117,7 +117,7 @@ function TimeChart({
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Overlay transparente para capturar arrastre */}
+      {/* Overlay transparente para arrastre */}
       <Box
         sx={{ position: 'absolute', inset: 0, zIndex: 3 }}
         onMouseMove={(e) => {
@@ -219,7 +219,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     if (startTimestamp > endTimestamp) return series;
 
     const sorted = [...events];
-    const initialState = sorted.length ? sorted[0].estado : 'PARO';
+    const initialState = sorted.length ? stateAt(sorted, startTimestamp) : 'PARO';
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
     for (const ev of sorted) {
@@ -229,8 +229,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
       }
     }
 
-    const lastState = sorted.length ? sorted[sorted.length - 1].estado : initialState;
-    series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
+    const finalState = sorted.length ? stateAt(sorted, endTimestamp) : initialState;
+  series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
 
   series.sort((a, b) => a.x - b.x);
   return series;
