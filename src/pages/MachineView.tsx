@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Container,
@@ -26,134 +26,189 @@ interface Event {
   hora: string;
 }
 
-interface MachineViewProps {
-  machineId: string;
+interface TimeChartProps {
+  start: number;
+  end: number;
+  events: Event[];
+  chartData: { x: number; y: number }[];
+  selectedX1: number;
+  selectedX2: number;
+  setSelectedX1: (x: number) => void;
+  setSelectedX2: (x: number) => void;
 }
 
-export default function MachineView({ machineId }: MachineViewProps) {
-  const [, setLocation] = useLocation();
+function TimeChart({
+  start,
+  end,
+  events,
+  chartData,
+  selectedX1,
+  selectedX2,
+  setSelectedX1,
+  setSelectedX2,
+}: TimeChartProps) {
+  const chartRef = useRef<any>(null);
+  const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
 
-  const [startDateInput, setStartDateInput] = useState<string>('');
-  const [endDateInput, setEndDateInput] = useState<string>('');
+  const timeToPixel = (ms: number) => {
+    const scale = chartRef.current?.state?.xAxisMap?.x?.scale;
+    return scale ? scale(ms) : 0;
+  };
+
+  const pixelToTime = (clientX: number) => {
+    const scale = chartRef.current?.state?.xAxisMap?.x?.scale;
+    if (!scale) return start;
+    const rect = chartRef.current.container.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    return scale.invert(relX);
+  };
+
+  const snapToNearestEvent = (ms: number) => {
+    let nearest = events[0];
+    let minDiff = Infinity;
+    for (const ev of events) {
+      const t = new Date(ev.hora).getTime();
+      const diff = Math.abs(t - ms);
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearest = ev;
+      }
+    }
+    return new Date(nearest.hora).getTime();
+  };
+
+  const handleMouseDown = (line: 'black' | 'red') => {
+    setDraggingLine(line);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingLine) return;
+    const ms = pixelToTime(e.clientX);
+    if (draggingLine === 'black') setSelectedX1(ms);
+    if (draggingLine === 'red') setSelectedX2(ms);
+  };
+
+  const handleMouseUp = () => {
+    if (draggingLine === 'black') {
+      setSelectedX1(snapToNearestEvent(selectedX1));
+    } else if (draggingLine === 'red') {
+      setSelectedX2(snapToNearestEvent(selectedX2));
+    }
+    setDraggingLine(null);
+  };
+
+  return (
+    <Box
+      sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart ref={chartRef} data={chartData} margin={{ top: 20, right: 30, left: 60, bottom: 20 }}>
+          <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+          <XAxis
+            dataKey="x"
+            type="number"
+            domain={[start, end]}
+            tickFormatter={(unixTime) =>
+              new Date(unixTime).toLocaleString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })
+            }
+            tick={{ fontSize: 12, fill: '#475569' }}
+          />
+          <YAxis
+            domain={[0, 1]}
+            ticks={[0, 1]}
+            tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+            width={80}
+            tick={{ fontSize: 12, fill: '#475569' }}
+          />
+          <Line
+            type="stepAfter"
+            dataKey="y"
+            stroke="#667eea"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+
+      {/* Líneas verticales */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 20,
+          bottom: 0,
+          left: timeToPixel(selectedX1),
+          width: 2,
+          backgroundColor: 'black',
+          cursor: 'ew-resize',
+          zIndex: 2,
+          transform: 'translateX(-1px)',
+        }}
+        onMouseDown={() => handleMouseDown('black')}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 20,
+          bottom: 0,
+          left: timeToPixel(selectedX2),
+          width: 2,
+          backgroundColor: 'red',
+          cursor: 'ew-resize',
+          zIndex: 2,
+          transform: 'translateX(-1px)',
+        }}
+        onMouseDown={() => handleMouseDown('red')}
+      />
+    </Box>
+  );
+}
+
+export default function MachineView({ machineId }: { machineId: string }) {
+  const [, setLocation] = useLocation();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [startDateInput, setStartDateInput] = useState('');
+  const [endDateInput, setEndDateInput] = useState('');
   const [startMs, setStartMs] = useState<number | null>(null);
   const [endMs, setEndMs] = useState<number | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-
-  const [selectedX1, setSelectedX1] = useState<number>(Date.now());
-  const [selectedX2, setSelectedX2] = useState<number>(Date.now());
-  const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
-  const [selectedInfo1, setSelectedInfo1] = useState<string>('');
-  const [selectedInfo2, setSelectedInfo2] = useState<string>('');
-  const [diffInfo, setDiffInfo] = useState<string>('');
-  const [hoverInfo, setHoverInfo] = useState<string>('');
-
-  const chartWrapRef = useRef<HTMLDivElement | null>(null);
-
-  const now = new Date();
-  const nowIsoLocal = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    now.getHours(),
-    now.getMinutes()
-  ).toISOString().slice(0, 16);
-  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const oneMonthAgoIsoLocal = new Date(
-    oneMonthAgo.getFullYear(),
-    oneMonthAgo.getMonth(),
-    oneMonthAgo.getDate(),
-    oneMonthAgo.getHours(),
-    oneMonthAgo.getMinutes()
-  ).toISOString().slice(0, 16);
-
-  const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
-
-  // Área de plot medida con precisión
-  const [plotLeft, setPlotLeft] = useState(0);
-  const [plotTop, setPlotTop] = useState(0);
-  const [plotRight, setPlotRight] = useState(0);
-  const [plotBottom, setPlotBottom] = useState(0);
-  const [plotWidth, setPlotWidth] = useState(0);
-  const [plotHeight, setPlotHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    const el = chartWrapRef.current;
-    if (!el) return;
-
-    const updatePlot = () => {
-      const rect = el.getBoundingClientRect();
-      const left = MARGINS.left;
-      const right = rect.width - MARGINS.right;
-      const top = MARGINS.top;
-      const bottom = rect.height - MARGINS.bottom;
-
-      setPlotLeft(left);
-      setPlotRight(right);
-      setPlotTop(top);
-      setPlotBottom(bottom);
-      setPlotWidth(Math.max(0, right - left));
-      setPlotHeight(Math.max(0, bottom - top));
-    };
-
-    updatePlot();
-
-    const ro = new ResizeObserver(() => {
-      updatePlot();
-    });
-    ro.observe(el);
-
-    return () => ro.disconnect();
-  }, []);
+  const [selectedX1, setSelectedX1] = useState(Date.now());
+  const [selectedX2, setSelectedX2] = useState(Date.now());
+  const [zoomRange, setZoomRange] = useState<[number, number] | null>(null);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
-    setLoading(true);
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
-
     if (start || end) {
       const params = new URLSearchParams();
       if (start) params.append('start', new Date(start!).toISOString());
       if (end) params.append('end', new Date(end!).toISOString());
       url += `?${params.toString()}`;
     }
-
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : [];
-      const normalized: Event[] = arr
-        .map((e: any) => ({
-          id: String(e.id ?? ''),
-          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-          hora: String(e.hora),
-        }))
-        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
-      setEvents(normalized);
-    } catch (err) {
-      console.error('Error de fetch:', err);
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch(url);
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : [];
+    const normalized: Event[] = arr
+      .map((e: any) => ({
+        id: String(e.id ?? ''),
+        estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+        hora: String(e.hora),
+      }))
+      .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+    setEvents(normalized);
   };
 
   useEffect(() => {
     fetchEvents();
   }, []);
-
-  const handleFilter = () => {
-    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
-
-    const minStart = oneMonthAgo.getTime();
-    const maxEnd = now.getTime();
-    const startValid = startLocalMs ? Math.max(startLocalMs, minStart) : null;
-    const endValid = endLocalMs ? Math.min(endLocalMs, maxEnd) : null;
-
-    setStartMs(startValid);
-    setEndMs(endValid);
-    fetchEvents(startValid, endValid);
-  };
 
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
@@ -169,114 +224,28 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
-
     const sorted = [...events];
-    const initialState = stateAt(sorted, startTimestamp);
+    const initialState = sorted.length ? sorted[0].estado : 'PARO';
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
-
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
         series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
     }
-
-    const lastState = stateAt(sorted, endTimestamp);
+    const lastState = sorted.length ? sorted[sorted.length - 1].estado : 'PARO';
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
-
     series.sort((a, b) => a.x - b.x);
     return series;
   }, [events, startTimestamp, endTimestamp]);
 
-  const formatDateTime = (ms: number) =>
-    new Date(ms).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
-  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
-    if (sortedEvents.length === 0) return 'PARO';
-    let lo = 0;
-    let hi = sortedEvents.length - 1;
-    let idx = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid < ms) {
-        idx = mid;
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
-    }
-    if (idx === -1) return sortedEvents[0].estado;
-    return sortedEvents[idx].estado;
-  }
-
-  const formatDiff = (ms: number) => {
-    const diffSec = Math.floor(Math.abs(ms) / 1000);
-    const days = Math.floor(diffSec / 86400);
-    const hours = Math.floor((diffSec % 86400) / 3600);
-    const minutes = Math.floor((diffSec % 3600) / 60);
-    const seconds = diffSec % 60;
-    return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+  const handleFilter = () => {
+    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+    setStartMs(startLocalMs);
+    setEndMs(endLocalMs);
+    fetchEvents(startLocalMs, endLocalMs);
   };
-
-  const domainSpan = Math.max(1, endTimestamp - startTimestamp);
-
-   const timeToLeftPx = (ms: number) => {
-    if (plotWidth <= 0) return plotLeft; // fallback seguro
-    const rel = (ms - startTimestamp) / domainSpan;
-    const clamped = Math.max(0, Math.min(1, rel));
-    return plotLeft + clamped * plotWidth;
-  };
-
-  const pixelToTime = (clientX: number) => {
-    const el = chartWrapRef.current;
-    if (!el || plotWidth <= 0) return startTimestamp;
-    const rect = el.getBoundingClientRect();
-    const relX = clientX - rect.left - plotLeft;
-    const rel = Math.max(0, Math.min(1, relX / plotWidth));
-    return startTimestamp + rel * domainSpan;
-  };
-
-  const handleOverlayMouseDown = (line: 'black' | 'red') => {
-    setDraggingLine(line);
-  };
-
-  const handleOverlayMouseMove = (e: React.MouseEvent) => {
-    if (!draggingLine) return;
-    const ms = pixelToTime(e.clientX);
-    setHoverInfo(`${stateAt(events, ms)} | ${formatDateTime(ms)}`);
-    if (draggingLine === 'black') setSelectedX1(ms);
-    if (draggingLine === 'red') setSelectedX2(ms);
-  };
-
-  const handleOverlayMouseUp = () => {
-    if (draggingLine === 'black') {
-      const estado = stateAt(events, selectedX1);
-      setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
-    } else if (draggingLine === 'red') {
-      const estado = stateAt(events, selectedX2);
-      setSelectedInfo2(`${estado} | ${formatDateTime(selectedX2)}`);
-    }
-    setDraggingLine(null);
-    if (selectedX1 && selectedX2) setDiffInfo(formatDiff(selectedX2 - selectedX1));
-  };
-
-  useEffect(() => {
-    // Reset seguro en cada cambio de rango
-    setSelectedX1(startTimestamp);
-    setSelectedX2(endTimestamp);
-    setSelectedInfo1('');
-    setSelectedInfo2('');
-    setDiffInfo('');
-    setHoverInfo('');
-  }, [startTimestamp, endTimestamp]);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
@@ -302,7 +271,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: oneMonthAgoIsoLocal, max: nowIsoLocal }}
               />
               <TextField
                 label="Fin"
@@ -310,106 +278,29 @@ export default function MachineView({ machineId }: MachineViewProps) {
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: oneMonthAgoIsoLocal, max: nowIsoLocal }}
               />
-              <Button variant="contained" color="primary" onClick={handleFilter} disabled={loading}>
-                {loading ? 'Cargando…' : 'Filtrar'}
+              <Button variant="contained" color="primary" onClick={handleFilter}>
+                Filtrar
               </Button>
-
-              {selectedInfo1 && (
-                <Typography variant="body1" sx={{ ml: 2, color: 'black', fontWeight: 500 }}>
-                  {selectedInfo1}
-                </Typography>
-              )}
-              {selectedInfo2 && (
-                <Typography variant="body1" sx={{ ml: 2, color: 'red', fontWeight: 500 }}>
-                  {selectedInfo2}
-                </Typography>
-              )}
-              {diffInfo && (
-                <Typography variant="body1" sx={{ ml: 2, color: '#2b6cb0', fontWeight: 600 }}>
-                  {diffInfo}
-                </Typography>
-              )}
-              {hoverInfo && (
-                <Typography variant="body1" sx={{ ml: 2, color: '#475569', fontWeight: 500 }}>
-                  {hoverInfo}
-                </Typography>
-              )}
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => setZoomRange([selectedX1, selectedX2])}
+              >
+                Zoom entre líneas
+              </Button>
             </Stack>
 
-            <Box
-              ref={chartWrapRef}
-              sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
-              onMouseMove={handleOverlayMouseMove}
-              onMouseUp={handleOverlayMouseUp}
-              onMouseLeave={handleOverlayMouseUp}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={MARGINS}>
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="x"
-                    type="number"
-                    domain={[startTimestamp, endTimestamp]}
-                    tickFormatter={(unixTime) =>
-                      new Date(unixTime).toLocaleString('es-ES', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                    }
-                    tick={{ fontSize: 12, fill: '#475569' }}
-                  />
-                  <YAxis
-                    domain={[0, 1]}
-                    ticks={[0, 1]}
-                    tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-                    width={80}
-                    tick={{ fontSize: 12, fill: '#475569' }}
-                  />
-                  <Line
-                    type="stepAfter"
-                    dataKey="y"
-                    stroke="#667eea"
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-
-              {/* Overlay con líneas largas arrastrables */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: plotTop,
-                  bottom: -10, // sobresale un poco por debajo
-                  left: timeToLeftPx(selectedX1),
-                  width: 2,
-                  backgroundColor: 'black',
-                  cursor: 'ew-resize',
-                  zIndex: 2,
-                }}
-                onMouseDown={() => handleOverlayMouseDown('black')}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: plotTop,
-                  bottom: -10, // sobresale un poco por debajo
-                  left: timeToLeftPx(selectedX2),
-                  width: 2,
-                  backgroundColor: 'red',
-                  cursor: 'ew-resize',
-                  zIndex: 2,
-                }}
-                onMouseDown={() => handleOverlayMouseDown('red')}
-              />
-            </Box>
+            <TimeChart
+              start={zoomRange ? zoomRange[0] : startTimestamp}
+              end={zoomRange ? zoomRange[1] : endTimestamp}
+              events={events}
+              chartData={chartData}
+              selectedX1={selectedX1}
+              selectedX2={selectedX2}
+              setSelectedX1={setSelectedX1}
+              setSelectedX2={setSelectedX2}
+            />
           </CardContent>
         </Card>
       </Container>
