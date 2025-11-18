@@ -18,12 +18,13 @@ import {
   YAxis,
   ResponsiveContainer,
   CartesianGrid,
+  ReferenceLine,
 } from 'recharts';
 
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
-  hora: string; // ISO datetime
+  hora: string;
 }
 
 interface MachineViewProps {
@@ -33,19 +34,13 @@ interface MachineViewProps {
 export default function MachineView({ machineId }: MachineViewProps) {
   const [, setLocation] = useLocation();
 
-  // Inputs pasivos
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');
-
-  // Filtros activos como timestamps (ms)
   const [startMs, setStartMs] = useState<number | null>(null);
   const [endMs, setEndMs] = useState<number | null>(null);
-
-  // Datos y carga
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Líneas verticales y paneles de info
   const [selectedX1, setSelectedX1] = useState<number>(Date.now());
   const [selectedX2, setSelectedX2] = useState<number>(Date.now());
   const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
@@ -54,10 +49,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
   const [diffInfo, setDiffInfo] = useState<string>('');
   const [hoverInfo, setHoverInfo] = useState<string>('');
 
-  // Ref del contenedor para overlay y conversión pixel↔tiempo
   const chartWrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Límites del calendario (derivados de hora local)
   const now = new Date();
   const nowIsoLocal = new Date(
     now.getFullYear(),
@@ -75,10 +68,8 @@ export default function MachineView({ machineId }: MachineViewProps) {
     oneMonthAgo.getMinutes()
   ).toISOString().slice(0, 16);
 
-  // Márgenes del gráfico (coinciden con LineChart.margin)
   const MARGINS = { top: 20, right: 30, left: 60, bottom: 20 };
 
-  // Fetch de eventos
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     setLoading(true);
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
@@ -114,7 +105,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
     fetchEvents();
   }, []);
 
-  // Aplicar filtros al pulsar “Filtrar”
   const handleFilter = () => {
     const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
     const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
@@ -129,11 +119,10 @@ export default function MachineView({ machineId }: MachineViewProps) {
     fetchEvents(startValid, endValid);
   };
 
-  // Rango activo de la gráfica (ms)
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000; // último 1h por defecto
+    return Date.now() - 3600000;
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -141,18 +130,14 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return Date.now();
   }, [endMs]);
 
-  // Serie discreta basada en eventos (rendimiento) con eje continuo
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
 
-    const sorted = [...events]; // ya ordenado
-
-    // Estado vigente al inicio del rango
+    const sorted = [...events];
     const initialState = stateAt(sorted, startTimestamp);
     series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
-    // Eventos dentro del rango
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
@@ -160,7 +145,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
       }
     }
 
-    // Punto final para cerrar tramo
     const lastState = stateAt(sorted, endTimestamp);
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
 
@@ -168,7 +152,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return series;
   }, [events, startTimestamp, endTimestamp]);
 
-  // Formato de fecha para UI
   const formatDateTime = (ms: number) =>
     new Date(ms).toLocaleString('es-ES', {
       year: 'numeric',
@@ -179,7 +162,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
       second: '2-digit',
     });
 
-  // Estado vigente en ms (búsqueda binaria: último evento con hora <= ms)
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
     if (sortedEvents.length === 0) return 'PARO';
     let lo = 0;
@@ -199,7 +181,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return sortedEvents[idx].estado;
   }
 
-  // Diferencia entre líneas
   const formatDiff = (ms: number) => {
     const diffSec = Math.floor(Math.abs(ms) / 1000);
     const days = Math.floor(diffSec / 86400);
@@ -209,77 +190,39 @@ export default function MachineView({ machineId }: MachineViewProps) {
     return `Diferencia: ${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
-  // Conversión pixel ↔ tiempo relativas al contenedor
-  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-
-  const getPlotWidth = () => {
-    const w = chartWrapRef.current?.offsetWidth ?? 0;
-    return Math.max(0, w - MARGINS.left - MARGINS.right);
-  };
-
-  const pixelToTime = (clientX: number) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return startTimestamp;
-    const plotW = getPlotWidth();
-    if (plotW <= 0) return startTimestamp;
-    const relX = clientX - rect.left; // X relativa al contenedor
-    const xInPlot = clamp(relX - MARGINS.left, 0, plotW);
-    const rel = xInPlot / plotW;
-    const ms = startTimestamp + rel * (endTimestamp - startTimestamp);
-    return ms; // sin redondeo: máxima precisión
-  };
-
-  const timeToLeftPx = (ms: number) => {
-    const plotW = getPlotWidth();
-    if (plotW <= 0 || endTimestamp === startTimestamp) return MARGINS.left;
-    const rel = (ms - startTimestamp) / (endTimestamp - startTimestamp);
-    const xInPlot = clamp(rel, 0, 1) * plotW;
-    return MARGINS.left + xInPlot; // px relativos al contenedor
-  };
-
-  // Overlay: selección de línea por proximidad
-  const handleOverlayMouseDown = (e: React.MouseEvent) => {
-    const rect = chartWrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const clickRelX = e.clientX - rect.left;
-    const x1 = timeToLeftPx(selectedX1);
-    const x2 = timeToLeftPx(selectedX2);
-    const d1 = Math.abs(x1 - clickRelX);
-    const d2 = Math.abs(x2 - clickRelX);
-    const threshold = 12; // px
+  const handleMouseDown = (e: any) => {
+    if (!e || typeof e.activeLabel !== 'number') return;
+    const x = e.activeLabel;
+    const d1 = Math.abs(x - selectedX1);
+    const d2 = Math.abs(x - selectedX2);
+    const threshold = 1000;
     if (d1 < d2 && d1 <= threshold) setDraggingLine('black');
     else if (d2 <= threshold) setDraggingLine('red');
   };
 
-  // Overlay: mover y hover info en tiempo real
-  const handleOverlayMouseMove = (e: React.MouseEvent) => {
-    const xMs = pixelToTime(e.clientX);
-    const estadoHover = stateAt(events, xMs);
-    setHoverInfo(`${estadoHover} | ${formatDateTime(xMs)}`);
-
-    if (!draggingLine) return;
-    if (draggingLine === 'black') setSelectedX1(xMs);
-    if (draggingLine === 'red') setSelectedX2(xMs);
+  const handleMouseMove = (e: any) => {
+    if (!e || typeof e.activeLabel !== 'number') return;
+    const x = e.activeLabel;
+    const estado = stateAt(events, x);
+    setHoverInfo(`${estado} | ${formatDateTime(x)}`);
+    if (draggingLine === 'black') setSelectedX1(x);
+    if (draggingLine === 'red') setSelectedX2(x);
   };
 
-  const handleOverlayMouseUp = () => {
-    if (!draggingLine) return;
-
+  const handleMouseUp = () => {
     if (draggingLine === 'black') {
       const estado = stateAt(events, selectedX1);
       setSelectedInfo1(`${estado} | ${formatDateTime(selectedX1)}`);
-    } else {
+    } else if (draggingLine === 'red') {
       const estado = stateAt(events, selectedX2);
       setSelectedInfo2(`${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
-
     if (selectedX1 && selectedX2) {
       setDiffInfo(formatDiff(selectedX2 - selectedX1));
     }
   };
 
-  // Reiniciar líneas y paneles al cambiar el rango visible
   useEffect(() => {
     setSelectedX1(startTimestamp);
     setSelectedX2(endTimestamp);
@@ -355,14 +298,13 @@ export default function MachineView({ machineId }: MachineViewProps) {
               )}
             </Stack>
 
-            {/* Contenedor del gráfico + overlay */}
             <Box
               ref={chartWrapRef}
               sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
-              onMouseDown={handleOverlayMouseDown}
-              onMouseMove={handleOverlayMouseMove}
-              onMouseUp={handleOverlayMouseUp}
-              onMouseLeave={handleOverlayMouseUp}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={MARGINS}>
@@ -390,7 +332,6 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     width={80}
                     tick={{ fontSize: 12, fill: '#475569' }}
                   />
-                  {/* Sin Tooltip automático */}
                   <Line
                     type="stepAfter"
                     dataKey="y"
@@ -399,56 +340,11 @@ export default function MachineView({ machineId }: MachineViewProps) {
                     dot={false}
                     isAnimationActive={false}
                   />
+                  {/* ReferenceLines integradas en el gráfico */}
+                  <ReferenceLine x={selectedX1} stroke="black" strokeWidth={2} />
+                  <ReferenceLine x={selectedX2} stroke="red" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
-
-              {/* Overlay: líneas verticales posicionadas por píxeles relativos al contenedor */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: timeToLeftPx(selectedX1),
-                  width: 0,
-                  borderLeft: '2px solid black',
-                  pointerEvents: 'none',
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: timeToLeftPx(selectedX2),
-                  width: 0,
-                  borderLeft: '2px solid red',
-                  pointerEvents: 'none',
-                }}
-              />
-
-              {/* Handles transparentes para facilitar el arrastre */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: timeToLeftPx(selectedX1) - 6,
-                  width: 12,
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={() => setDraggingLine('black')}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: MARGINS.top,
-                  bottom: MARGINS.bottom,
-                  left: timeToLeftPx(selectedX2) - 6,
-                  width: 12,
-                  cursor: 'ew-resize',
-                }}
-                onMouseDown={() => setDraggingLine('red')}
-              />
             </Box>
           </CardContent>
         </Card>
