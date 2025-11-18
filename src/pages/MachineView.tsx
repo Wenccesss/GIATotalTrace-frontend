@@ -23,7 +23,7 @@ import {
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
-  hora: string;
+  hora: string; // ISO string
 }
 
 interface TimeChartProps {
@@ -81,7 +81,7 @@ function TimeChart({
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
       const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid < ms) {
+      if (tMid <= ms) {
         idx = mid;
         lo = mid + 1;
       } else {
@@ -92,37 +92,32 @@ function TimeChart({
     return sortedEvents[idx].estado;
   }
 
-  const handleMouseDown = (line: 'black' | 'red') => {
-    setDraggingLine(line);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const onMouseMoveOverlay = (e: React.MouseEvent) => {
     if (!draggingLine) return;
     const ms = pixelToTime(e.clientX);
     if (draggingLine === 'black') setSelectedX1(ms);
     if (draggingLine === 'red') setSelectedX2(ms);
   };
 
-  const handleMouseUp = () => {
+  const onMouseUpOverlay = () => {
     if (draggingLine === 'black') {
       const estado = stateAt(events, selectedX1);
-      console.log(`Negra → ${estado} | ${formatDateTime(selectedX1)}`);
+      console.log(`Línea negra → ${estado} | ${formatDateTime(selectedX1)}`);
     } else if (draggingLine === 'red') {
       const estado = stateAt(events, selectedX2);
-      console.log(`Roja → ${estado} | ${formatDateTime(selectedX2)}`);
+      console.log(`Línea roja → ${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
   };
 
   return (
-    <Box
-      sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    >
+    <Box sx={{ position: 'relative', width: '100%', height: 380, userSelect: 'none' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart ref={chartRef} data={chartData} margin={{ top: 20, right: 30, left: 60, bottom: 20 }}>
+        <LineChart
+          ref={chartRef}
+          data={chartData}
+          margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
+        >
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
           <XAxis
             dataKey="x"
@@ -158,34 +153,47 @@ function TimeChart({
         </LineChart>
       </ResponsiveContainer>
 
+      {/* Overlay transparente para capturar arrastre y soltar */}
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          cursor: draggingLine ? 'ew-resize' : 'default',
+          zIndex: 3,
+        }}
+        onMouseMove={onMouseMoveOverlay}
+        onMouseUp={onMouseUpOverlay}
+        onMouseLeave={onMouseUpOverlay}
+      />
+
       {/* Líneas verticales arrastrables */}
       <Box
         sx={{
           position: 'absolute',
-          top: 20,
-          bottom: 0,
+          top: 20, // igual al margin.top del LineChart
+          bottom: 20, // igual al margin.bottom para no pisar el eje X
           left: timeToPixel(selectedX1),
           width: 2,
           backgroundColor: 'black',
           cursor: 'ew-resize',
-          zIndex: 2,
+          zIndex: 4,
           transform: 'translateX(-1px)',
         }}
-        onMouseDown={() => handleMouseDown('black')}
+        onMouseDown={() => setDraggingLine('black')}
       />
       <Box
         sx={{
           position: 'absolute',
           top: 20,
-          bottom: 0,
+          bottom: 20,
           left: timeToPixel(selectedX2),
           width: 2,
           backgroundColor: 'red',
           cursor: 'ew-resize',
-          zIndex: 2,
+          zIndex: 4,
           transform: 'translateX(-1px)',
         }}
-        onMouseDown={() => handleMouseDown('red')}
+        onMouseDown={() => setDraggingLine('red')}
       />
     </Box>
   );
@@ -229,7 +237,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000;
+    return Date.now() - 3600000; // última hora por defecto
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -237,21 +245,26 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return Date.now();
   }, [endMs]);
 
+  // Construcción de la serie stepAfter
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
     if (startTimestamp > endTimestamp) return series;
+
     const sorted = [...events];
     const initialState = sorted.length ? sorted[0].estado : 'PARO';
-    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0});
-      for (const ev of sorted) {
+    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
+
+    for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
         series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
     }
 
-    const lastState = sorted.length ? sorted[sorted.length - 1].estado : 'PARO';
-    series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
+    // Si no hay eventos dentro del rango, mantenemos el estado inicial hasta el fin
+    const lastStateInRange =
+      series.length > 0 ? (series[series.length - 1].y === 1 ? 'MARCHA' : 'PARO') : initialState;
+    series.push({ x: endTimestamp, y: lastStateInRange === 'MARCHA' ? 1 : 0 });
 
     series.sort((a, b) => a.x - b.x);
     return series;
