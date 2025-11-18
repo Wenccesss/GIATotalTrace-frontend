@@ -63,19 +63,34 @@ function TimeChart({
     return scale.invert(relX);
   };
 
-  const snapToNearestEvent = (ms: number) => {
-    let nearest = events[0];
-    let minDiff = Infinity;
-    for (const ev of events) {
-      const t = new Date(ev.hora).getTime();
-      const diff = Math.abs(t - ms);
-      if (diff < minDiff) {
-        minDiff = diff;
-        nearest = ev;
+  const formatDateTime = (ms: number) =>
+    new Date(ms).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+    if (sortedEvents.length === 0) return 'PARO';
+    let lo = 0;
+    let hi = sortedEvents.length - 1;
+    let idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const tMid = new Date(sortedEvents[mid].hora).getTime();
+      if (tMid < ms) {
+        idx = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
       }
     }
-    return new Date(nearest.hora).getTime();
-  };
+    if (idx === -1) return sortedEvents[0].estado;
+    return sortedEvents[idx].estado;
+  }
 
   const handleMouseDown = (line: 'black' | 'red') => {
     setDraggingLine(line);
@@ -90,9 +105,11 @@ function TimeChart({
 
   const handleMouseUp = () => {
     if (draggingLine === 'black') {
-      setSelectedX1(snapToNearestEvent(selectedX1));
+      const estado = stateAt(events, selectedX1);
+      console.log(`Negra → ${estado} | ${formatDateTime(selectedX1)}`);
     } else if (draggingLine === 'red') {
-      setSelectedX2(snapToNearestEvent(selectedX2));
+      const estado = stateAt(events, selectedX2);
+      console.log(`Roja → ${estado} | ${formatDateTime(selectedX2)}`);
     }
     setDraggingLine(null);
   };
@@ -141,7 +158,7 @@ function TimeChart({
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Líneas verticales */}
+      {/* Líneas verticales arrastrables */}
       <Box
         sx={{
           position: 'absolute',
@@ -183,7 +200,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [endMs, setEndMs] = useState<number | null>(null);
   const [selectedX1, setSelectedX1] = useState(Date.now());
   const [selectedX2, setSelectedX2] = useState(Date.now());
-  const [zoomRange, setZoomRange] = useState<[number, number] | null>(null);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
@@ -226,15 +242,17 @@ export default function MachineView({ machineId }: { machineId: string }) {
     if (startTimestamp > endTimestamp) return series;
     const sorted = [...events];
     const initialState = sorted.length ? sorted[0].estado : 'PARO';
-    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
-    for (const ev of sorted) {
+    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0
+      for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
       if (t >= startTimestamp && t <= endTimestamp) {
         series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
     }
+
     const lastState = sorted.length ? sorted[sorted.length - 1].estado : 'PARO';
     series.push({ x: endTimestamp, y: lastState === 'MARCHA' ? 1 : 0 });
+
     series.sort((a, b) => a.x - b.x);
     return series;
   }, [events, startTimestamp, endTimestamp]);
@@ -282,18 +300,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
               <Button variant="contained" color="primary" onClick={handleFilter}>
                 Filtrar
               </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => setZoomRange([selectedX1, selectedX2])}
-              >
-                Zoom entre líneas
-              </Button>
             </Stack>
 
             <TimeChart
-              start={zoomRange ? zoomRange[0] : startTimestamp}
-              end={zoomRange ? zoomRange[1] : endTimestamp}
+              start={startTimestamp}
+              end={endTimestamp}
               events={events}
               chartData={chartData}
               selectedX1={selectedX1}
