@@ -60,7 +60,7 @@ function TimeChart({
   setSelectedX2,
 }: TimeChartProps) {
   const chartRef = useRef<any>(null);
-  const [draggingLine, setDraggingLine] = useState<'black' | 'red' | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{ left: number; estado: string; fecha: string } | null>(null);
 
   const timeToPixel = (ms: number) => {
     const scale = chartRef.current?.state?.xAxisMap?.x?.scale;
@@ -77,9 +77,6 @@ function TimeChart({
 
   const formatDateTime = (ms: number) =>
     new Date(ms).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -88,82 +85,75 @@ function TimeChart({
   return (
     <Box sx={{ position: 'relative', width: '100%', height: 380 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          ref={chartRef}
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
-        >
+        <LineChart ref={chartRef} data={chartData} margin={{ top: 20, right: 30, left: 60, bottom: 20 }}>
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-          <XAxis
-            dataKey="x"
-            type="number"
-            domain={[start, end]}
-            tickFormatter={(unixTime) =>
-              new Date(unixTime).toLocaleString('es-ES', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })
-            }
-          />
-          <YAxis
-            domain={[0, 1]}
-            ticks={[0, 1]}
-            tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-          />
+          <XAxis dataKey="x" type="number" domain={[start, end]} />
+          <YAxis domain={[0, 1]} ticks={[0, 1]} tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
           <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Overlay transparente para arrastre */}
+      {/* Overlay para hover */}
       <Box
-        sx={{ position: 'absolute', inset: 0, zIndex: 3 }}
+        sx={{ position: 'absolute', inset: 0, zIndex: 2 }}
         onMouseMove={(e) => {
-          if (!draggingLine) return;
           const ms = pixelToTime(e.clientX);
-          if (draggingLine === 'black') setSelectedX1(ms);
-          if (draggingLine === 'red') setSelectedX2(ms);
+          const estado = stateAt(events, ms);
+          setHoverInfo({
+            left: e.clientX,
+            estado,
+            fecha: formatDateTime(ms),
+          });
         }}
-        onMouseUp={() => {
-          if (draggingLine === 'black') {
-            console.log(`Negra → ${stateAt(events, selectedX1)} | ${formatDateTime(selectedX1)}`);
-          } else if (draggingLine === 'red') {
-            console.log(`Roja → ${stateAt(events, selectedX2)} | ${formatDateTime(selectedX2)}`);
-          }
-          setDraggingLine(null);
-        }}
-        onMouseLeave={() => setDraggingLine(null)}
+        onMouseLeave={() => setHoverInfo(null)}
       />
 
-      {/* Líneas verticales */}
+      {/* Tooltip flotante */}
+      {hoverInfo && (
+        <Box
+          sx={{
+            position: 'fixed',
+            left: hoverInfo.left + 10,
+            top: 100,
+            background: 'white',
+            border: '1px solid #ccc',
+            borderRadius: 4,
+            padding: '4px 8px',
+            fontSize: 12,
+            pointerEvents: 'none',
+            zIndex: 10,
+          }}
+        >
+          {hoverInfo.estado} | {hoverInfo.fecha}
+        </Box>
+      )}
+
+      {/* Líneas verticales arrastrables */}
       <Box
-        sx={{
-          position: 'absolute',
-          top: 20,
-          bottom: 20,
-          left: timeToPixel(selectedX1),
-          width: 2,
-          backgroundColor: 'black',
-          cursor: 'ew-resize',
-          zIndex: 4,
+        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixel(selectedX1), width: 2, backgroundColor: 'black', cursor: 'ew-resize', zIndex: 4 }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const move = (ev: MouseEvent) => setSelectedX1(pixelToTime(ev.clientX));
+          const up = () => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+          };
+          document.addEventListener('mousemove', move);
+          document.addEventListener('mouseup', up);
         }}
-        onMouseDown={() => setDraggingLine('black')}
       />
       <Box
-        sx={{
-          position: 'absolute',
-          top: 20,
-          bottom: 20,
-          left: timeToPixel(selectedX2),
-          width: 2,
-          backgroundColor: 'red',
-          cursor: 'ew-resize',
-          zIndex: 4,
+        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToPixel(selectedX2), width: 2, backgroundColor: 'red', cursor: 'ew-resize', zIndex: 4 }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          const move = (ev: MouseEvent) => setSelectedX2(pixelToTime(ev.clientX));
+          const up = () => {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', up);
+          };
+          document.addEventListener('mousemove', move);
+          document.addEventListener('mouseup', up);
         }}
-        onMouseDown={() => setDraggingLine('red')}
       />
     </Box>
   );
@@ -234,66 +224,71 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
     series.sort((a, b) => a.x - b.x);
     return series;
-}, [events, startTimestamp, endTimestamp]);
+  }, [events, startTimestamp, endTimestamp]);
 
-const handleFilter = () => {
-  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
-  setStartMs(startLocalMs);
-  setEndMs(endLocalMs);
-  fetchEvents(startLocalMs, endLocalMs);
-};
+  const handleFilter = () => {
+    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+    setStartMs(startLocalMs);
+    setEndMs(endLocalMs);
+    fetchEvents(startLocalMs, endLocalMs);
+    // Mantén las líneas dentro del nuevo rango si existen
+    if (startLocalMs && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
+    if (endLocalMs && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
+    if (startLocalMs && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
+    if (endLocalMs && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
+  };
 
-return (
-  <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
-    <Container maxWidth="lg">
-      <Button
-        startIcon={<ArrowBack />}
-        onClick={() => setLocation('/dashboard')}
-        sx={{ mb: 3, color: '#667eea', textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
-      >
-        Volver al Dashboard
-      </Button>
+  return (
+    <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
+      <Container maxWidth="lg">
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => setLocation('/dashboard')}
+          sx={{ mb: 3, color: '#667eea', textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
+        >
+          Volver al Dashboard
+        </Button>
 
-      <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
-        <CardContent>
-          <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
-            Estado de la máquina en el tiempo
-          </Typography>
+        <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
+          <CardContent>
+            <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
+              Estado de la máquina en el tiempo
+            </Typography>
 
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
-            <TextField
-              label="Inicio"
-              type="datetime-local"
-              value={startDateInput}
-              onChange={(e) => setStartDateInput(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
+              <TextField
+                label="Inicio"
+                type="datetime-local"
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Fin"
+                type="datetime-local"
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button variant="contained" color="primary" onClick={handleFilter}>
+                Filtrar
+              </Button>
+            </Stack>
+
+            <TimeChart
+              start={startTimestamp}
+              end={endTimestamp}
+              events={events}
+              chartData={chartData}
+              selectedX1={selectedX1}
+              selectedX2={selectedX2}
+              setSelectedX1={setSelectedX1}
+              setSelectedX2={setSelectedX2}
             />
-            <TextField
-              label="Fin"
-              type="datetime-local"
-              value={endDateInput}
-              onChange={(e) => setEndDateInput(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="contained" color="primary" onClick={handleFilter}>
-              Filtrar
-            </Button>
-          </Stack>
-
-          <TimeChart
-            start={startTimestamp}
-            end={endTimestamp}
-            events={events}
-            chartData={chartData}
-            selectedX1={selectedX1}
-            selectedX2={selectedX2}
-            setSelectedX1={setSelectedX1}
-            setSelectedX2={setSelectedX2}
-          />
-        </CardContent>
-      </Card>
-    </Container>
-  </Box>
-);
-}
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
+  );
+  }
