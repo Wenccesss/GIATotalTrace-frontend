@@ -246,8 +246,12 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
         <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
           <CardContent sx={{ p: 0 }}>
-            <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
-              Estado de la máquina en el tiempo
+            <Typography
+              variant="h5"
+              align="center"
+              sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}
+              >
+              TRAZABILIDAD MAQUINA-1
             </Typography>
 
             <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 2, flexWrap: 'wrap' }}>
