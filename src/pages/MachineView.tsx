@@ -34,24 +34,28 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [endMs, setEndMs] = useState<number | null>(null);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
-    let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
-    if (start || end) {
-      const params = new URLSearchParams();
-      if (start) params.append('start', new Date(start!).toISOString());
-      if (end) params.append('end', new Date(end!).toISOString());
-      url += `?${params.toString()}`;
+    try {
+      let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
+      if (start || end) {
+        const params = new URLSearchParams();
+        if (start) params.append('start', new Date(start!).toISOString());
+        if (end) params.append('end', new Date(end!).toISOString());
+        url += `?${params.toString()}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
+      const normalized: Event[] = arr
+        .map((e: any) => ({
+          id: String(e.id ?? ''),
+          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+          hora: String(e.hora),
+        }))
+        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+      setEvents(normalized);
+    } catch (err) {
+      console.error('Error fetching events', err);
     }
-    const res = await fetch(url);
-    const data = await res.json();
-    const arr = Array.isArray(data) ? data : [];
-    const normalized: Event[] = arr
-      .map((e: any) => ({
-        id: String(e.id ?? ''),
-        estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-        hora: String(e.hora),
-      }))
-      .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
-    setEvents(normalized);
   };
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000;
+    return Date.now() - 3600000; // última hora por defecto
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -69,35 +73,33 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return Date.now();
   }, [endMs]);
 
-
+  // Líneas arrastrables
   const [selectedX1, setSelectedX1] = useState<number | null>(null);
   const [selectedX2, setSelectedX2] = useState<number | null>(null);
+  const [dragging, setDragging] = useState<'x1' | 'x2' | null>(null);
+
   const handleFilter = () => {
-  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
 
-  setStartMs(startLocalMs);
-  setEndMs(endLocalMs);
-  fetchEvents(startLocalMs, endLocalMs);
+    setStartMs(startLocalMs);
+    setEndMs(endLocalMs);
+    fetchEvents(startLocalMs, endLocalMs);
 
-  if (startLocalMs !== null) setSelectedX1(startLocalMs);
-  if (endLocalMs !== null) setSelectedX2(endLocalMs);
-};
+    // Recolocamos las líneas explícitamente al nuevo rango del filtro
+    if (startLocalMs !== null) setSelectedX1(startLocalMs);
+    if (endLocalMs !== null) setSelectedX2(endLocalMs);
+  };
 
-useEffect(() => {
-  if (startMs !== null || endMs !== null) {
-    setSelectedX1(startTimestamp);
-    setSelectedX2(endTimestamp);
-  }
-}, [startMs, endMs]);
-
-useEffect(() => {
-  if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
-  if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
-  if (selectedX2 < startTimestamp) setSelectedX2(startTimestamp);
-  if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
-}, [selectedX1, selectedX2, startTimestamp, endTimestamp]);
-
+  // Inicializa las líneas solo si están en null (no pisa el arrastre)
+  useEffect(() => {
+    if (selectedX1 === null && startTimestamp) {
+      setSelectedX1(startTimestamp);
+    }
+    if (selectedX2 === null && endTimestamp) {
+      setSelectedX2(endTimestamp);
+    }
+  }, [startTimestamp, endTimestamp, selectedX1, selectedX2]);
 
   // Escalas visx
   const width = 800;
@@ -122,37 +124,48 @@ useEffect(() => {
     [height]
   );
 
-  const chartData = useMemo(() => {
-  const series: { x: number; y: number }[] = [];
-  if (startTimestamp > endTimestamp) return series;
-
-  const sorted = [...events];
-  // Estado inicial en el rango
-  const initialState = stateAt(sorted, startTimestamp);
-  series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
-
-  // Recorremos eventos dentro del rango
-  for (const ev of sorted) {
-    const t = new Date(ev.hora).getTime();
-    if (t >= startTimestamp && t <= endTimestamp) {
-      series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+  // Estado a tiempo (binary search coherente con curveStepAfter)
+  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+    if (sortedEvents.length === 0) return 'PARO';
+    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const tMid = new Date(sortedEvents[mid].hora).getTime();
+      if (tMid <= ms) {
+        idx = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
     }
+    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
   }
 
-  // Estado final en el rango
-  const finalState = stateAt(sorted, endTimestamp);
-  series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+  const chartData = useMemo(() => {
+    const series: { x: number; y: number }[] = [];
+    if (startTimestamp > endTimestamp) return series;
 
-  // Ordenamos por tiempo
-  series.sort((a, b) => a.x - b.x);
-  return series;
-}, [events, startTimestamp, endTimestamp]);
+    const sorted = [...events];
+    const initialState = stateAt(sorted, startTimestamp);
+    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
 
-  // Líneas arrastrables
-  const [dragging, setDragging] = useState<'x1' | 'x2' | null>(null);
+    for (const ev of sorted) {
+      const t = new Date(ev.hora).getTime();
+      if (t >= startTimestamp && t <= endTimestamp) {
+        series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+      }
+    }
 
+    const finalState = stateAt(sorted, endTimestamp);
+    series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+
+    series.sort((a, b) => a.x - b.x);
+    return series;
+  }, [events, startTimestamp, endTimestamp]);
+
+  // Drag global en el SVG
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<SVGRectElement>) => {
+    (e: React.MouseEvent<SVGSVGElement>) => {
       if (!dragging) return;
       const point = localPoint(e);
       if (!point) return;
@@ -168,22 +181,13 @@ useEffect(() => {
   // Tooltip hover
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
-  // Función para calcular estado en un timestamp
-  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
-    if (sortedEvents.length === 0) return 'PARO';
-    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid <= ms) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
-    }
-    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
-  }
+  const safeX1 = selectedX1 ?? startTimestamp;
+  const safeX2 = selectedX2 ?? endTimestamp;
 
-  const estadoX1 = stateAt(events, selectedX1);
-  const estadoX2 = stateAt(events, selectedX2);
+  const estadoX1 = stateAt(events, safeX1);
+  const estadoX2 = stateAt(events, safeX2);
 
-  const diffMs = Math.abs(selectedX2 - selectedX1);
+  const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
 
@@ -225,7 +229,13 @@ useEffect(() => {
             </Stack>
 
             {/* Gráfico visx */}
-            <svg width={width} height={height} style={{ background: '#fff' }} onMouseUp={handleMouseUp}>
+            <svg
+              width={width}
+              height={height}
+              style={{ background: '#fff' }}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
               <Group>
                 <AxisBottom top={height - margin.bottom} scale={xScale} />
                 <AxisLeft
@@ -245,61 +255,52 @@ useEffect(() => {
 
                 {/* Líneas arrastrables */}
                 <line
-  x1={xScale(new Date(selectedX1 ?? startTimestamp))}
-  x2={xScale(new Date(selectedX1 ?? startTimestamp))}
-  y1={margin.top}
-  y2={height - margin.bottom}
-  stroke="black"
-  strokeWidth={2}
-  cursor="ew-resize"
-  onMouseDown={() => setDragging('x1')}
-/>
-<line
-  x1={xScale(new Date(selectedX2 ?? endTimestamp))}
-  x2={xScale(new Date(selectedX2 ?? endTimestamp))}
-  y1={margin.top}
-  y2={height - margin.bottom}
-  stroke="red"
-  strokeWidth={2}
-  cursor="ew-resize"
-  onMouseDown={() => setDragging('x2')}
-/>
+                  x1={xScale(new Date(safeX1))}
+                  x2={xScale(new Date(safeX1))}
+                  y1={margin.top}
+                  y2={height - margin.bottom}
+                  stroke="black"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x1')}
+                />
+                <line
+                  x1={xScale(new Date(safeX2))}
+                  x2={xScale(new Date(safeX2))}
+                  y1={margin.top}
+                  y2={height - margin.bottom}
+                  stroke="red"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x2')}
+                />
               </Group>
 
-              {/* Overlay para hover y drag */}
+              {/* Overlay para hover (sin gestión de drag aquí) */}
               <rect
-  x={margin.left}
-  y={margin.top}
-  width={width - margin.left - margin.right}
-  height={height - margin.top - margin.bottom}
-  fill="transparent"
-  onMouseMove={(e) => {
-    const point = localPoint(e);
-    if (!point) return;
-
-    if (dragging) {
-      const ms = xScale.invert(point.x).getTime();
-      if (dragging === 'x1') setSelectedX1(ms);
-      if (dragging === 'x2') setSelectedX2(ms);
-    }
-
-    // hover
-    const msDate = xScale.invert(point.x);
-    const estado = stateAt(events, msDate);
-    setHover({
-      x: point.x,
-      y: point.y,
-      fecha: msDate.toLocaleString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-      estado,
-    });
-  }}
-  onMouseLeave={() => setHover(null)}
-  onMouseUp={() => setDragging(null)}
-/>
+                x={margin.left}
+                y={margin.top}
+                width={width - margin.left - margin.right}
+                height={height - margin.top - margin.bottom}
+                fill="transparent"
+                onMouseMove={(e) => {
+                  const point = localPoint(e);
+                  if (!point) return;
+                  const msDate = xScale.invert(point.x);
+                  const estado = stateAt(events, msDate.getTime());
+                  setHover({
+                    x: point.x,
+                    y: point.y,
+                    fecha: msDate.toLocaleString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }),
+                    estado,
+                  });
+                }}
+                onMouseLeave={() => setHover(null)}
+              />
 
               {/* Tooltip hover */}
               {hover && (
@@ -310,24 +311,24 @@ useEffect(() => {
 
               {/* Info de cada línea */}
               <text
-                x={xScale(new Date(selectedX1)) + 5}
+                x={xScale(new Date(safeX1)) + 5}
                 y={margin.top + 15}
                 fontSize={12}
                 fill="black"
               >
-                {estadoX1} | {new Date(selectedX1).toLocaleString('es-ES', {
+                {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
                 })}
               </text>
               <text
-                x={xScale(new Date(selectedX2)) + 5}
+                x={xScale(new Date(safeX2)) + 5}
                 y={margin.top + 30}
                 fontSize={12}
                 fill="red"
               >
-                {estadoX2} | {new Date(selectedX2).toLocaleString('es-ES', {
+                {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
@@ -344,4 +345,3 @@ useEffect(() => {
       </Container>
     </Box>
   );
-}
