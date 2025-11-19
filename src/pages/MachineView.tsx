@@ -72,18 +72,28 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const handleFilter = () => {
   const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
   const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+
   setStartMs(startLocalMs);
   setEndMs(endLocalMs);
   fetchEvents(startLocalMs, endLocalMs);
+
   if (startLocalMs !== null) setSelectedX1(startLocalMs);
   if (endLocalMs !== null) setSelectedX2(endLocalMs);
+};
 
-  useEffect(() => {
+useEffect(() => {
   if (startTimestamp && endTimestamp) {
     setSelectedX1(startTimestamp);
     setSelectedX2(endTimestamp);
   }
 }, [startTimestamp, endTimestamp]);
+
+useEffect(() => {
+  if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
+  if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
+  if (selectedX2 < startTimestamp) setSelectedX2(startTimestamp);
+  if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
+}, [selectedX1, selectedX2, startTimestamp, endTimestamp]);
 
   // Ajustar líneas al nuevo rango
   if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
@@ -240,25 +250,25 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
                 {/* Líneas arrastrables */}
                 <line
-                  x1={xScale(new Date(selectedX1))}
-                  x2={xScale(new Date(selectedX1))}
-                  y1={margin.top}
-                  y2={height - margin.bottom}
-                  stroke="black"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x1')}
-                />
-                <line
-                  x1={xScale(new Date(selectedX2))}
-                  x2={xScale(new Date(selectedX2))}
-                  y1={margin.top}
-                  y2={height - margin.bottom}
-                  stroke="red"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x2')}
-                />
+  x1={xScale(new Date(selectedX1))}
+  x2={xScale(new Date(selectedX1))}
+  y1={margin.top}
+  y2={height - margin.bottom}
+  stroke="black"
+  strokeWidth={2}
+  cursor="ew-resize"
+  onMouseDown={() => setDragging('x1')}
+/>
+<line
+  x1={xScale(new Date(selectedX2))}
+  x2={xScale(new Date(selectedX2))}
+  y1={margin.top}
+  y2={height - margin.bottom}
+  stroke="red"
+  strokeWidth={2}
+  cursor="ew-resize"
+  onMouseDown={() => setDragging('x2')}
+/>
               </Group>
 
               {/* Overlay para hover y drag */}
@@ -272,14 +282,13 @@ export default function MachineView({ machineId }: { machineId: string }) {
     const point = localPoint(e);
     if (!point) return;
 
-    // --- DRAGGING ---
     if (dragging) {
       const ms = xScale.invert(point.x).getTime();
       if (dragging === 'x1') setSelectedX1(ms);
       if (dragging === 'x2') setSelectedX2(ms);
     }
 
-    // --- HOVER ---
+    // hover
     const msDate = xScale.invert(point.x);
     const estado = stateAt(events, msDate);
     setHover({
