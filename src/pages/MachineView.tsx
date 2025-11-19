@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Container,
@@ -99,9 +99,22 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
   }, [startTimestamp, endTimestamp, selectedX1, selectedX2]);
 
-  const width = 800;
+  // 🔧 ResizeObserver para ancho dinámico
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(800);
   const height = 400;
   const margin = { top: 20, right: 100, bottom: 40, left: 100 };
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(chartRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const xScale = useMemo(
     () =>
@@ -186,7 +199,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
+
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth="lg">
@@ -197,9 +210,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
         >
           Volver al Dashboard
         </Button>
-
         <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
-           <CardContent sx={{ p: 0 }}>
+          <CardContent sx={{ p: 0 }}>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
               Estado de la máquina en el tiempo
             </Typography>
@@ -249,86 +261,88 @@ export default function MachineView({ machineId }: { machineId: string }) {
             </Stack>
 
             {/* Gráfico visx */}
-            <svg
-              width={width}
-              height={height}
-              style={{ background: '#fff' }}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
-              <Group>
-                <AxisBottom top={height - margin.bottom} scale={xScale} />
-                <AxisLeft
-                  left={margin.left}
-                  scale={yScale}
-                  tickFormat={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+            <Box ref={chartRef} sx={{ width: '100%' }}>
+              <svg
+                width={width}
+                height={height}
+                style={{ background: '#fff' }}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+              >
+                <Group>
+                  <AxisBottom top={height - margin.bottom} scale={xScale} />
+                  <AxisLeft
+                    left={margin.left}
+                    scale={yScale}
+                    tickFormat={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                  />
+
+                  <LinePath
+                    data={chartData}
+                    x={(d) => xScale(new Date(d.x))}
+                    y={(d) => yScale(d.y)}
+                    stroke="#667eea"
+                    strokeWidth={2}
+                    curve={curveStepAfter}
+                  />
+
+                  {/* Líneas arrastrables */}
+                  <line
+                    x1={xScale(new Date(safeX1))}
+                    x2={xScale(new Date(safeX1))}
+                    y1={margin.top}
+                    y2={height - margin.bottom + 10}
+                    stroke="black"
+                    strokeWidth={2}
+                    cursor="ew-resize"
+                    onMouseDown={() => setDragging('x1')}
+                  />
+                  <line
+                    x1={xScale(new Date(safeX2))}
+                    x2={xScale(new Date(safeX2))}
+                    y1={margin.top}
+                    y2={height - margin.bottom + 10}
+                    stroke="red"
+                    strokeWidth={2}
+                    cursor="ew-resize"
+                    onMouseDown={() => setDragging('x2')}
+                  />
+                </Group>
+
+                {/* Overlay para hover */}
+                <rect
+                  x={margin.left}
+                  y={margin.top}
+                  width={width - margin.left - margin.right}
+                  height={height - margin.top - margin.bottom}
+                  fill="transparent"
+                  onMouseMove={(e) => {
+                    const point = localPoint(e);
+                    if (!point) return;
+                    const msDate = xScale.invert(point.x);
+                    const estado = stateAt(events, msDate.getTime());
+                    setHover({
+                      x: point.x,
+                      y: point.y,
+                      fecha: msDate.toLocaleString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      }),
+                      estado,
+                    });
+                  }}
+                  onMouseLeave={() => setHover(null)}
                 />
 
-                <LinePath
-                  data={chartData}
-                  x={(d) => xScale(new Date(d.x))}
-                  y={(d) => yScale(d.y)}
-                  stroke="#667eea"
-                  strokeWidth={2}
-                  curve={curveStepAfter}
-                />
-
-                {/* Líneas arrastrables (sobresalen por debajo) */}
-                <line
-                  x1={xScale(new Date(safeX1))}
-                  x2={xScale(new Date(safeX1))}
-                  y1={margin.top}
-                  y2={height - margin.bottom + 10}
-                  stroke="black"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x1')}
-                />
-                <line
-                  x1={xScale(new Date(safeX2))}
-                  x2={xScale(new Date(safeX2))}
-                  y1={margin.top}
-                  y2={height - margin.bottom + 10}
-                  stroke="red"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x2')}
-                />
-              </Group>
-
-              {/* Overlay para hover */}
-              <rect
-                x={margin.left}
-                y={margin.top}
-                width={width - margin.left - margin.right}
-                height={height - margin.top - margin.bottom}
-                fill="transparent"
-                onMouseMove={(e) => {
-                  const point = localPoint(e);
-                  if (!point) return;
-                  const msDate = xScale.invert(point.x);
-                  const estado = stateAt(events, msDate.getTime());
-                  setHover({
-                    x: point.x,
-                    y: point.y,
-                    fecha: msDate.toLocaleString('es-ES', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    }),
-                    estado,
-                  });
-                }}
-                onMouseLeave={() => setHover(null)}
-              />
-
-              {/* Tooltip hover */}
-              {hover && (
-                <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
-                  {hover.estado} | {hover.fecha}
-                </text>
-              )}
-            </svg>
+                {/* Tooltip hover */}
+                {hover && (
+                  <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
+                    {hover.estado} | {hover.fecha}
+                  </text>
+                )}
+              </svg>
+            </Box>
           </CardContent>
         </Card>
       </Container>
