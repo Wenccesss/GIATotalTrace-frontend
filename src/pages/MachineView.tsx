@@ -100,7 +100,7 @@ useEffect(() => {
   if (endLocalMs !== null && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
   if (startLocalMs !== null && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
   if (endLocalMs !== null && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
-};
+
 
   // Escalas visx
   const width = 800;
