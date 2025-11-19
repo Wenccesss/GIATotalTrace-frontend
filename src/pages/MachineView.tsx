@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -11,151 +11,18 @@ import {
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useLocation } from 'wouter';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
+
+import { scaleTime, scaleLinear } from '@visx/scale';
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { LinePath } from '@visx/shape';
+import { localPoint } from '@visx/event';
+import { Group } from '@visx/group';
+import { curveStepAfter } from 'd3-shape';
 
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
   hora: string;
-}
-
-// Función compartida para calcular el estado en un timestamp
-function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
-  if (sortedEvents.length === 0) return 'PARO';
-  let lo = 0, hi = sortedEvents.length - 1, idx = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const tMid = new Date(sortedEvents[mid].hora).getTime();
-    if (tMid <= ms) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
-  }
-  return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
-}
-
-interface TimeChartProps {
-  start: number;
-  end: number;
-  events: Event[];
-  chartData: { x: number; y: number }[];
-  selectedX1: number;
-  selectedX2: number;
-  setSelectedX1: (x: number) => void;
-  setSelectedX2: (x: number) => void;
-}
-
-function TimeChart({
-  start,
-  end,
-  events,
-  chartData,
-  selectedX1,
-  selectedX2,
-  setSelectedX1,
-  setSelectedX2,
-}: TimeChartProps) {
-  const chartRef = useRef<any>(null);
-  const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; estado: string; fecha: string } | null>(null);
-
-  const getScale = () => chartRef.current?.state?.xAxisMap?.x?.scale;
-
-  const timeToChartX = (ms: number) => {
-    const scale = getScale();
-    return scale ? scale(ms) : 0;
-  };
-
-  const chartXToTime = (chartX: number) => {
-    const scale = getScale();
-    return scale ? scale.invert(chartX) : start;
-  };
-
-  const formatDateTime = (ms: number) =>
-    new Date(ms).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  const attachDrag = (which: 'x1' | 'x2') => (e: React.MouseEvent) => {
-    e.preventDefault();
-    const move = (ev: MouseEvent) => {
-      const s = chartRef.current?.state;
-      if (!s) return;
-      const chartX = s.chartX;
-      const ms = chartXToTime(chartX);
-      if (which === 'x1') setSelectedX1(ms);
-      else setSelectedX2(ms);
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-    };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-  };
-
-  return (
-    <Box sx={{ position: 'relative', width: '100%', height: 380 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          ref={chartRef}
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
-          onMouseMove={(payload: any) => {
-            const scale = getScale();
-            if (!scale) return;
-            const chartX = payload?.chartX;
-            const chartY = payload?.chartY;
-            if (typeof chartX !== 'number' || chartX < 0) return;
-            const ms = chartXToTime(chartX);
-            const estado = stateAt(events, ms);
-            setHoverInfo({
-              x: chartX + 10,
-              y: chartY + 10,
-              estado,
-              fecha: formatDateTime(ms),
-            });
-          }}
-          onMouseLeave={() => setHoverInfo(null)}
-        >
-          <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-          <XAxis dataKey="x" type="number" domain={[start, end]} />
-          <YAxis domain={[0, 1]} ticks={[0, 1]} tickFormatter={(v) => (v === 1 ? 'MARCHA' : 'PARO')} />
-          <Line type="stepAfter" dataKey="y" stroke="#667eea" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-
-      {hoverInfo && (
-        <Box
-          sx={{
-            position: 'absolute',
-            left: hoverInfo.x,
-            top: hoverInfo.y,
-            background: 'white',
-            border: '1px solid #ccc',
-            borderRadius: 4,
-            padding: '4px 8px',
-            fontSize: 12,
-            pointerEvents: 'none',
-            zIndex: 10,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-          }}
-        >
-          {hoverInfo.estado} | {hoverInfo.fecha}
-        </Box>
-      )}
-
-      <Box
-        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToChartX(selectedX1), width: 2, backgroundColor: 'black', cursor: 'ew-resize', zIndex: 4 }}
-        onMouseDown={attachDrag('x1')}
-      />
-      <Box
-        sx={{ position: 'absolute', top: 20, bottom: 20, left: timeToChartX(selectedX2), width: 2, backgroundColor: 'red', cursor: 'ew-resize', zIndex: 4 }}
-        onMouseDown={attachDrag('x2')}
-      />
-    </Box>
-  );
 }
 
 export default function MachineView({ machineId }: { machineId: string }) {
@@ -165,8 +32,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [endDateInput, setEndDateInput] = useState('');
   const [startMs, setStartMs] = useState<number | null>(null);
   const [endMs, setEndMs] = useState<number | null>(null);
-  const [selectedX1, setSelectedX1] = useState(Date.now());
-  const [selectedX2, setSelectedX2] = useState(Date.now());
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
@@ -204,91 +69,232 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return Date.now();
   }, [endMs]);
 
+  const handleFilter = () => {
+    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+    setStartMs(startLocalMs);
+    setEndMs(endLocalMs);
+    fetchEvents(startLocalMs, endLocalMs);
+  };
+
+  // Escalas visx
+  const width = 800;
+  const height = 400;
+  const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+
+  const xScale = useMemo(
+    () =>
+      scaleTime({
+        domain: [new Date(startTimestamp), new Date(endTimestamp)],
+        range: [margin.left, width - margin.right],
+      }),
+    [startTimestamp, endTimestamp, width]
+  );
+
+  const yScale = useMemo(
+    () =>
+      scaleLinear({
+        domain: [0, 1],
+        range: [height - margin.bottom, margin.top],
+      }),
+    [height]
+  );
+
   const chartData = useMemo(() => {
-    const series: { x: number; y: number }[] = [];
-    if (startTimestamp > endTimestamp) return series;
+    return events.map((ev) => ({
+      x: new Date(ev.hora).getTime(),
+      y: ev.estado === 'MARCHA' ? 1 : 0,
+    }));
+  }, [events]);
 
-    const sorted = [...events];
-    const initialState = stateAt(sorted, startTimestamp);
-  series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
+  // Líneas arrastrables
+  const [selectedX1, setSelectedX1] = useState(startTimestamp);
+  const [selectedX2, setSelectedX2] = useState(endTimestamp);
+  const [dragging, setDragging] = useState<'x1' | 'x2' | null>(null);
 
-  for (const ev of sorted) {
-    const t = new Date(ev.hora).getTime();
-    if (t >= startTimestamp && t <= endTimestamp) {
-      series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<SVGRectElement>) => {
+      if (!dragging) return;
+      const point = localPoint(e);
+      if (!point) return;
+      const ms = xScale.invert(point.x).getTime();
+      if (dragging === 'x1') setSelectedX1(ms);
+      else setSelectedX2(ms);
+    },
+    [dragging, xScale]
+  );
+
+  const handleMouseUp = () => setDragging(null);
+
+  // Tooltip hover
+  const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
+
+  // Función para calcular estado en un timestamp
+  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
+    if (sortedEvents.length === 0) return 'PARO';
+    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const tMid = new Date(sortedEvents[mid].hora).getTime();
+      if (tMid <= ms) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
     }
+    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
   }
 
-  const finalState = stateAt(sorted, endTimestamp);
-  series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+  const estadoX1 = stateAt(events, selectedX1);
+  const estadoX2 = stateAt(events, selectedX2);
 
-  series.sort((a, b) => a.x - b.x);
-  return series;
-}, [events, startTimestamp, endTimestamp]);
+  const diffMs = Math.abs(selectedX2 - selectedX1);
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
 
-const handleFilter = () => {
-  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
-  setStartMs(startLocalMs);
-  setEndMs(endLocalMs);
-  fetchEvents(startLocalMs, endLocalMs);
-  // Mantener las líneas dentro del nuevo rango
-  if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
-  if (endLocalMs !== null && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
-  if (startLocalMs !== null && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
-  if (endLocalMs !== null && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
-};
+  return (
+    <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
+      <Container maxWidth="lg">
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => setLocation('/dashboard')}
+          sx={{ mb: 3, color: '#667eea', textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
+        >
+          Volver al Dashboard
+        </Button>
 
-return (
-  <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
-    <Container maxWidth="lg">
-      <Button
-        startIcon={<ArrowBack />}
-        onClick={() => setLocation('/dashboard')}
-        sx={{ mb: 3, color: '#667eea', textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
-      >
-        Volver al Dashboard
-      </Button>
+        <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
+          <CardContent>
+            <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
+              Estado de la máquina en el tiempo
+            </Typography>
 
-      <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
-        <CardContent>
-          <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
-            Estado de la máquina en el tiempo
-          </Typography>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
+              <TextField
+                label="Inicio"
+                type="datetime-local"
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Fin"
+                type="datetime-local"
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button variant="contained" color="primary" onClick={handleFilter}>
+                Filtrar
+              </Button>
+            </Stack>
 
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
-            <TextField
-              label="Inicio"
-              type="datetime-local"
-              value={startDateInput}
-              onChange={(e) => setStartDateInput(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Fin"
-              type="datetime-local"
-              value={endDateInput}
-              onChange={(e) => setEndDateInput(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="contained" color="primary" onClick={handleFilter}>
-              Filtrar
-            </Button>
-          </Stack>
+            {/* Gráfico visx */}
+            <svg width={width} height={height} style={{ background: '#fff' }} onMouseUp={handleMouseUp}>
+              <Group>
+                <AxisBottom top={height - margin.bottom} scale={xScale} />
+                <AxisLeft
+                  left={margin.left}
+                  scale={yScale}
+                  tickFormat={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                />
 
-          <TimeChart
-            start={startTimestamp}
-            end={endTimestamp}
-            events={events}
-            chartData={chartData}
-            selectedX1={selectedX1}
-            selectedX2={selectedX2}
-            setSelectedX1={setSelectedX1}
-            setSelectedX2={setSelectedX2}
-          />
-        </CardContent>
-      </Card>
-    </Container>
-  </Box>
-);
+                <LinePath
+                  data={chartData}
+                  x={(d) => xScale(new Date(d.x))}
+                  y={(d) => yScale(d.y)}
+                  stroke="#667eea"
+                  strokeWidth={2}
+                  curve={curveStepAfter}
+                />
+
+                {/* Líneas arrastrables */}
+                <line
+                  x1={xScale(new Date(selectedX1))}
+                  x2={xScale(new Date(selectedX1))}
+                  y1={margin.top}
+                  y2={height - margin.bottom}
+                  stroke="black"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x1')}
+                />
+                <line
+                  x1={xScale(new Date(selectedX2))}
+                  x2={xScale(new Date(selectedX2))}
+                  y1={margin.top}
+                  y2={height - margin.bottom}
+                  stroke="red"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x2')}
+                />
+              </Group>
+
+              {/* Overlay para hover y drag */}
+              <rect
+                x={margin.left}
+                y={margin.top}
+                width={width - margin.left - margin.right}
+                height={height - margin.top - margin.bottom}
+                fill="transparent"
+                onMouseMove={(e) => {
+                  handleMouseMove(e);
+                  const point = localPoint(e);
+                  if (!point) return;
+                  const ms = xScale.invert(point.x);
+                  const estado = stateAt(events, ms);
+                  setHover({
+                    x: point.x,
+                    y: point.y,
+                    fecha: ms.toLocaleString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }),
+                    estado,
+                  });
+                }}
+                onMouseLeave={() => setHover(null)}
+              />
+
+              {/* Tooltip hover */}
+              {hover && (
+                <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
+                  {hover.estado} | {hover.fecha}
+                </text>
+              )}
+
+              {/* Info de cada línea */}
+              <text
+                x={xScale(new Date(selectedX1)) + 5}
+                y={margin.top + 15}
+                fontSize={12}
+                fill="black"
+              >
+                {estadoX1} | {new Date(selectedX1).toLocaleString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })}
+              </text>
+              <text
+                x={xScale(new Date(selectedX2)) + 5}
+                y={margin.top + 30}
+                fontSize={12}
+                fill="red"
+              >
+                {estadoX2} | {new Date(selectedX2).toLocaleString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })}
+              </text>
+            </svg>
+
+            {/* Diferencia entre líneas */}
+            <Typography sx={{ mt: 2, fontWeight: 500 }}>
+              Diferencia entre líneas: {diffMin} min ({diffSec} segundos)
+            </Typography>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
+  );
 }
