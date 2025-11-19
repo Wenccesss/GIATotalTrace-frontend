@@ -126,25 +126,34 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return () => observer.disconnect();
   }, []);
 
-  // 🔧 Zoom progresivo
-  const [currentRange, setCurrentRange] = useState<[number, number]>([startTimestamp, endTimestamp]);
+  // 🔧 Zoom progresivo (concatenable)
+  const [currentRange, setCurrentRange] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (startTimestamp && endTimestamp) {
+      setCurrentRange([startTimestamp, endTimestamp]);
+    }
+  }, [startTimestamp, endTimestamp]);
 
   const handleZoomIn = () => {
-    setCurrentRange([safeX1, safeX2]);
+    if (selectedX1 && selectedX2) {
+      setCurrentRange([selectedX1, selectedX2]);
+    }
   };
 
   const handleZoomOut = () => {
     setCurrentRange([startTimestamp, endTimestamp]);
   };
 
-  const xScale = useMemo(
-    () =>
-      scaleTime({
-        domain: [new Date(currentRange[0]), new Date(currentRange[1])],
-        range: [margin.left, width - margin.right],
-      }),
-    [currentRange, width, margin.left, margin.right]
-  );
+  const xScale = useMemo(() => {
+    if (!currentRange) {
+      return scaleTime({ domain: [new Date(), new Date()], range: [margin.left, width - margin.right] });
+    }
+    return scaleTime({
+      domain: [new Date(currentRange[0]), new Date(currentRange[1])],
+      range: [margin.left, width - margin.right],
+    });
+  }, [currentRange, width, margin.left, margin.right]);
 
   const yScale = useMemo(
     () =>
@@ -172,6 +181,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }
 
   const chartData = useMemo(() => {
+    if (!currentRange) return [];
     const series: { x: number; y: number }[] = [];
     const sorted = [...events];
 
@@ -196,11 +206,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }, [events, currentRange]);
 
   const clamp = (ms: number) =>
-    Math.max(currentRange[0], Math.min(currentRange[1], ms));
+    currentRange ? Math.max(currentRange[0], Math.min(currentRange[1], ms)) : ms;
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
-      if (!dragging) return;
+      if (!dragging || !currentRange) return;
       const point = localPoint(e);
       if (!point) return;
       const ms = clamp(xScale.invert(point.x).getTime());
@@ -214,14 +224,15 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
-  const safeX1 = selectedX1 ?? currentRange[0];
-  const safeX2 = selectedX2 ?? currentRange[1];
+ const safeX1 = selectedX1 ?? (currentRange ? currentRange[0] : startTimestamp);
+  const safeX2 = selectedX2 ?? (currentRange ? currentRange[1] : endTimestamp);
 
   const estadoX1 = stateAt(events, safeX1);
   const estadoX2 = stateAt(events, safeX2);
 
   const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
+
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth="lg">
