@@ -101,11 +101,30 @@ export default function MachineView({ machineId }: { machineId: string }) {
   );
 
   const chartData = useMemo(() => {
-    return events.map((ev) => ({
-      x: new Date(ev.hora).getTime(),
-      y: ev.estado === 'MARCHA' ? 1 : 0,
-    }));
-  }, [events]);
+  const series: { x: number; y: number }[] = [];
+  if (startTimestamp > endTimestamp) return series;
+
+  const sorted = [...events];
+  // Estado inicial en el rango
+  const initialState = stateAt(sorted, startTimestamp);
+  series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
+
+  // Recorremos eventos dentro del rango
+  for (const ev of sorted) {
+    const t = new Date(ev.hora).getTime();
+    if (t >= startTimestamp && t <= endTimestamp) {
+      series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+    }
+  }
+
+  // Estado final en el rango
+  const finalState = stateAt(sorted, endTimestamp);
+  series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+
+  // Ordenamos por tiempo
+  series.sort((a, b) => a.x - b.x);
+  return series;
+}, [events, startTimestamp, endTimestamp]);
 
   // Líneas arrastrables
   const [selectedX1, setSelectedX1] = useState(startTimestamp);
