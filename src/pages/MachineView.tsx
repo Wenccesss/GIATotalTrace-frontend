@@ -59,8 +59,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
   };
 
-  
-
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
@@ -162,8 +160,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
     [height, margin.top, margin.bottom]
   );
 
-  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
-    if (sortedEvents.length === 0) return 'PARO';
+  // 🔧 Devuelve null si no hay eventos
+  function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' | null {
+    if (sortedEvents.length === 0) return null;
     let lo = 0, hi = sortedEvents.length - 1, idx = -1;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;
@@ -179,7 +178,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }
 
   const chartData = useMemo(() => {
-    if (!currentRange) return [];
+    if (!currentRange || events.length === 0) return [];
     const series: { x: number; y: number }[] = [];
     const sorted = [...events];
 
@@ -187,7 +186,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
     const zoomEnd = currentRange[1];
 
     const initialState = stateAt(sorted, zoomStart);
-    series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
+    if (initialState) {
+      series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
+    }
 
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
@@ -197,7 +198,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
 
     const finalState = stateAt(sorted, zoomEnd);
-    series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
+    if (finalState) {
+      series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
+    }
 
     series.sort((a, b) => a.x - b.x);
     return series;
@@ -217,12 +220,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
     },
     [dragging, xScale, currentRange]
   );
-
   const handleMouseUp = () => setDragging(null);
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
- const safeX1 = selectedX1 ?? (currentRange ? currentRange[0] : startTimestamp);
+  const safeX1 = selectedX1 ?? (currentRange ? currentRange[0] : startTimestamp);
   const safeX2 = selectedX2 ?? (currentRange ? currentRange[1] : endTimestamp);
 
   const estadoX1 = stateAt(events, safeX1);
@@ -248,11 +250,17 @@ export default function MachineView({ machineId }: { machineId: string }) {
               variant="h5"
               align="center"
               sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}
-              >
+            >
               TRAZABILIDAD MAQUINA-1
             </Typography>
 
-            <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 2, flexWrap: 'wrap' }}>
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              justifyContent="center"
+              sx={{ mb: 2, flexWrap: 'wrap', textAlign: 'center', width: '100%' }}
+            >
               <TextField
                 label="Inicio"
                 type="datetime-local"
@@ -271,7 +279,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 Filtrar
               </Button>
 
-              {/* Botones de Zoom */}
               <Button variant="outlined" onClick={handleZoomIn} sx={{ ml: 2 }}>
                 Zoom In
               </Button>
@@ -279,17 +286,16 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 Zoom Out
               </Button>
 
-              {/* Textos a la derecha */}
               <Box sx={{ ml: 3 }}>
                 <Typography sx={{ fontWeight: 500, color: 'black' }}>
-                  {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
+                  {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
                   })}
                 </Typography>
                 <Typography sx={{ fontWeight: 500, color: 'red' }}>
-                  {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
+                  {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -303,7 +309,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
               </Box>
             </Stack>
 
-            {/* Gráfico visx */}
             <Box ref={chartRef} sx={{ width: '100%' }}>
               <svg
                 width={width}
@@ -330,7 +335,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
                     curve={curveStepAfter}
                   />
 
-                  {/* Líneas arrastrables */}
                   <line
                     x1={xScale(new Date(safeX1))}
                     x2={xScale(new Date(safeX1))}
@@ -353,7 +357,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   />
                 </Group>
 
-                {/* Overlay para hover */}
                 <rect
                   x={margin.left}
                   y={margin.top}
@@ -373,13 +376,12 @@ export default function MachineView({ machineId }: { machineId: string }) {
                         minute: '2-digit',
                         second: '2-digit',
                       }),
-                      estado,
+                      estado: estado ?? 'Sin estado',
                     });
                   }}
                   onMouseLeave={() => setHover(null)}
                 />
 
-                {/* Tooltip hover */}
                 {hover && (
                   <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
                     {hover.estado} | {hover.fecha}
