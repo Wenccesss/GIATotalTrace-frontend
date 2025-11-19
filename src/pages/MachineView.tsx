@@ -75,7 +75,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
   setStartMs(startLocalMs);
   setEndMs(endLocalMs);
   fetchEvents(startLocalMs, endLocalMs);
-  
+  if (startLocalMs !== null) setSelectedX1(startLocalMs);
+  if (endLocalMs !== null) setSelectedX2(endLocalMs);
+
   useEffect(() => {
   if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
   if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
