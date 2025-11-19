@@ -250,26 +250,26 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 />
 
                 {/* Líneas arrastrables */}
-                <line
-                  x1={xScale(new Date(safeX1))}
-                  x2={xScale(new Date(safeX1))}
-                  y1={margin.top}
-                  y2={height - margin.bottom}
-                  stroke="black"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x1')}
-                />
-                <line
-                  x1={xScale(new Date(safeX2))}
-                  x2={xScale(new Date(safeX2))}
-                  y1={margin.top}
-                  y2={height - margin.bottom}
-                  stroke="red"
-                  strokeWidth={2}
-                  cursor="ew-resize"
-                  onMouseDown={() => setDragging('x2')}
-                />
+<line
+  x1={xScale(new Date(safeX1))}
+  x2={xScale(new Date(safeX1))}
+  y1={margin.top}
+  y2={height - margin.bottom + 10}   // sobresale un poco
+  stroke="black"
+  strokeWidth={2}
+  cursor="ew-resize"
+  onMouseDown={() => setDragging('x1')}
+/>
+<line
+  x1={xScale(new Date(safeX2))}
+  x2={xScale(new Date(safeX2))}
+  y1={margin.top}
+  y2={height - margin.bottom + 10}   // sobresale un poco
+  stroke="red"
+  strokeWidth={2}
+  cursor="ew-resize"
+  onMouseDown={() => setDragging('x2')}
+/>
               </Group>
 
               {/* Overlay para hover (sin gestión de drag aquí) */}
