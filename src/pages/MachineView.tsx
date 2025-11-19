@@ -284,7 +284,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   <AxisLeft
                     left={margin.left}
                     scale={yScale}
-                    tickFormat={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
+                    tickValues={[0, 1]} // solo dos ticks: abajo y arriba
+                    tickFormat={(v) => (v === 1 ? 'MARCHA' : v === 0 ? 'PARO' : '')}
                   />
 
                   <LinePath
