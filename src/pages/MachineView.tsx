@@ -59,9 +59,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
   };
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  
 
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
