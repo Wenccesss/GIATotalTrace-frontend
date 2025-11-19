@@ -226,14 +226,14 @@ export default function MachineView({ machineId }: { machineId: string }) {
               {/* Textos a la derecha del botón */}
               <Box sx={{ ml: 3 }}>
                 <Typography sx={{ fontWeight: 500, color: 'black' }}>
-                  Línea negra: {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
+                  {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
                   })}
                 </Typography>
                 <Typography sx={{ fontWeight: 500, color: 'red' }}>
-                  Línea roja: {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
+                  {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
