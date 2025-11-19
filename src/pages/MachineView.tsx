@@ -69,38 +69,21 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return Date.now();
   }, [endMs]);
 
-  // Inicialización automática de las líneas al cargar eventos o rango
-useEffect(() => {
-  if (events.length > 0 && startTimestamp && endTimestamp) {
-    // Línea negra al inicio del rango
-    setSelectedX1(startTimestamp);
-    // Línea roja al final del rango
-    setSelectedX2(endTimestamp);
-  }
-}, [events, startTimestamp, endTimestamp]);
+  const handleFilter = () => {
+  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+  setStartMs(startLocalMs);
+  setEndMs(endLocalMs);
+  fetchEvents(startLocalMs, endLocalMs);
+  if (startLocalMs !== null) setSelectedX1(startLocalMs);
+  if (endLocalMs !== null) setSelectedX2(endLocalMs);
 
-// Ajuste automático si cambian los límites del rango
-useEffect(() => {
+  useEffect(() => {
   if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
   if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
   if (selectedX2 < startTimestamp) setSelectedX2(startTimestamp);
   if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
 }, [startTimestamp, endTimestamp]);
-
-// Filtro con reinicialización de líneas
-const handleFilter = () => {
-  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
-
-  setStartMs(startLocalMs);
-  setEndMs(endLocalMs);
-  fetchEvents(startLocalMs, endLocalMs);
-
-  // Reinicializa las líneas al nuevo rango
-  if (startLocalMs !== null) setSelectedX1(startLocalMs);
-  if (endLocalMs !== null) setSelectedX2(endLocalMs);
-};
-}, [events, startTimestamp, endTimestamp]);
 
   // Ajustar líneas al nuevo rango
   if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
