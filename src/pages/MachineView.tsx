@@ -85,13 +85,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
 };
 
 useEffect(() => {
-  if (selectedX1 === null && startTimestamp) {
+  if (startMs !== null || endMs !== null) {
     setSelectedX1(startTimestamp);
-  }
-  if (selectedX2 === null && endTimestamp) {
     setSelectedX2(endTimestamp);
   }
-}, [startTimestamp, endTimestamp, selectedX1, selectedX2]);
+}, [startMs, endMs]);
 
 useEffect(() => {
   if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
