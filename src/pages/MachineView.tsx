@@ -79,10 +79,10 @@ export default function MachineView({ machineId }: { machineId: string }) {
   if (endLocalMs !== null) setSelectedX2(endLocalMs);
 
   useEffect(() => {
-  if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
-  if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
-  if (selectedX2 < startTimestamp) setSelectedX2(startTimestamp);
-  if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
+  if (startTimestamp && endTimestamp) {
+    setSelectedX1(startTimestamp);
+    setSelectedX2(endTimestamp);
+  }
 }, [startTimestamp, endTimestamp]);
 
   // Ajustar líneas al nuevo rango
