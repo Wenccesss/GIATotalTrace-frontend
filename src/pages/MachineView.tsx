@@ -345,3 +345,4 @@ export default function MachineView({ machineId }: { machineId: string }) {
       </Container>
     </Box>
   );
+  }
