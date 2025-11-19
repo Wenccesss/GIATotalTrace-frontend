@@ -126,13 +126,24 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return () => observer.disconnect();
   }, []);
 
+  // 🔧 Zoom progresivo
+  const [currentRange, setCurrentRange] = useState<[number, number]>([startTimestamp, endTimestamp]);
+
+  const handleZoomIn = () => {
+    setCurrentRange([safeX1, safeX2]);
+  };
+
+  const handleZoomOut = () => {
+    setCurrentRange([startTimestamp, endTimestamp]);
+  };
+
   const xScale = useMemo(
     () =>
       scaleTime({
-        domain: [new Date(startTimestamp), new Date(endTimestamp)],
+        domain: [new Date(currentRange[0]), new Date(currentRange[1])],
         range: [margin.left, width - margin.right],
       }),
-    [startTimestamp, endTimestamp, width, margin.left, margin.right]
+    [currentRange, width, margin.left, margin.right]
   );
 
   const yScale = useMemo(
@@ -162,28 +173,30 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const chartData = useMemo(() => {
     const series: { x: number; y: number }[] = [];
-    if (startTimestamp > endTimestamp) return series;
-
     const sorted = [...events];
-    const initialState = stateAt(sorted, startTimestamp);
-    series.push({ x: startTimestamp, y: initialState === 'MARCHA' ? 1 : 0 });
+
+    const zoomStart = currentRange[0];
+    const zoomEnd = currentRange[1];
+
+    const initialState = stateAt(sorted, zoomStart);
+    series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
 
     for (const ev of sorted) {
       const t = new Date(ev.hora).getTime();
-      if (t >= startTimestamp && t <= endTimestamp) {
+      if (t >= zoomStart && t <= zoomEnd) {
         series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
     }
 
-    const finalState = stateAt(sorted, endTimestamp);
-    series.push({ x: endTimestamp, y: finalState === 'MARCHA' ? 1 : 0 });
+    const finalState = stateAt(sorted, zoomEnd);
+    series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
 
     series.sort((a, b) => a.x - b.x);
     return series;
-  }, [events, startTimestamp, endTimestamp]);
+  }, [events, currentRange]);
 
   const clamp = (ms: number) =>
-    Math.max(startTimestamp, Math.min(endTimestamp, ms));
+    Math.max(currentRange[0], Math.min(currentRange[1], ms));
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -194,22 +207,21 @@ export default function MachineView({ machineId }: { machineId: string }) {
       if (dragging === 'x1') setSelectedX1(ms);
       else if (dragging === 'x2') setSelectedX2(ms);
     },
-    [dragging, xScale, startTimestamp, endTimestamp]
+    [dragging, xScale, currentRange]
   );
 
   const handleMouseUp = () => setDragging(null);
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
-  const safeX1 = selectedX1 ?? startTimestamp;
-  const safeX2 = selectedX2 ?? endTimestamp;
+  const safeX1 = selectedX1 ?? currentRange[0];
+  const safeX2 = selectedX2 ?? currentRange[1];
 
   const estadoX1 = stateAt(events, safeX1);
   const estadoX2 = stateAt(events, safeX2);
 
   const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
-
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth="lg">
@@ -220,6 +232,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
         >
           Volver al Dashboard
         </Button>
+
         <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
           <CardContent sx={{ p: 0 }}>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
@@ -245,7 +258,15 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 Filtrar
               </Button>
 
-              {/* Textos a la derecha del botón */}
+              {/* Botones de Zoom */}
+              <Button variant="outlined" onClick={handleZoomIn} sx={{ ml: 2 }}>
+                Zoom In
+              </Button>
+              <Button variant="outlined" onClick={handleZoomOut} sx={{ ml: 2 }}>
+                Zoom Out
+              </Button>
+
+              {/* Textos a la derecha */}
               <Box sx={{ ml: 3 }}>
                 <Typography sx={{ fontWeight: 500, color: 'black' }}>
                   {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
@@ -261,7 +282,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
                     second: '2-digit',
                   })}
                 </Typography>
-                {/* Solo el tiempo (HH:MM:SS) */}
                 <Typography sx={{ mt: 1, fontWeight: 600 }}>
                   {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
                   {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
@@ -284,7 +304,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   <AxisLeft
                     left={margin.left}
                     scale={yScale}
-                    tickValues={[0, 1]} // solo dos ticks: abajo y arriba
+                    tickValues={[0, 1]}
                     tickFormat={(v) => (v === 1 ? 'MARCHA' : v === 0 ? 'PARO' : '')}
                   />
 
