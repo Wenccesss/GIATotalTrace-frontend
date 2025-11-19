@@ -169,7 +169,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
       if (!point) return;
       const ms = clamp(xScale.invert(point.x).getTime());
       if (dragging === 'x1') setSelectedX1(ms);
-      else setSelectedX2(ms);
+      else if (dragging === 'x2') setSelectedX2(ms);
     },
     [dragging, xScale, startTimestamp, endTimestamp]
   );
@@ -204,7 +204,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
               Estado de la máquina en el tiempo
             </Typography>
 
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
+            <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 2, flexWrap: 'wrap' }}>
               <TextField
                 label="Inicio"
                 type="datetime-local"
@@ -222,6 +222,30 @@ export default function MachineView({ machineId }: { machineId: string }) {
               <Button variant="contained" color="primary" onClick={handleFilter}>
                 Filtrar
               </Button>
+
+              {/* Textos a la derecha del botón */}
+              <Box sx={{ ml: 3 }}>
+                <Typography sx={{ fontWeight: 500, color: 'black' }}>
+                  Línea negra: {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </Typography>
+                <Typography sx={{ fontWeight: 500, color: 'red' }}>
+                  Línea roja: {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </Typography>
+                {/* Solo el tiempo (HH:MM:SS) */}
+                <Typography sx={{ mt: 1, fontWeight: 600 }}>
+                  {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+                  {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+                  {String(diffSec % 60).padStart(2, '0')}
+                </Typography>
+              </Box>
             </Stack>
 
             {/* Gráfico visx */}
@@ -249,30 +273,30 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   curve={curveStepAfter}
                 />
 
-                {/* Líneas arrastrables */}
-<line
-  x1={xScale(new Date(safeX1))}
-  x2={xScale(new Date(safeX1))}
-  y1={margin.top}
-  y2={height - margin.bottom + 10}   // sobresale un poco
-  stroke="black"
-  strokeWidth={2}
-  cursor="ew-resize"
-  onMouseDown={() => setDragging('x1')}
-/>
-<line
-  x1={xScale(new Date(safeX2))}
-  x2={xScale(new Date(safeX2))}
-  y1={margin.top}
-  y2={height - margin.bottom + 10}   // sobresale un poco
-  stroke="red"
-  strokeWidth={2}
-  cursor="ew-resize"
-  onMouseDown={() => setDragging('x2')}
-/>
+                {/* Líneas arrastrables (sobresalen por debajo) */}
+                <line
+                  x1={xScale(new Date(safeX1))}
+                  x2={xScale(new Date(safeX1))}
+                  y1={margin.top}
+                  y2={height - margin.bottom + 10}
+                  stroke="black"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x1')}
+                />
+                <line
+                  x1={xScale(new Date(safeX2))}
+                  x2={xScale(new Date(safeX2))}
+                  y1={margin.top}
+                  y2={height - margin.bottom + 10}
+                  stroke="red"
+                  strokeWidth={2}
+                  cursor="ew-resize"
+                  onMouseDown={() => setDragging('x2')}
+                />
               </Group>
 
-              {/* Overlay para hover (sin gestión de drag aquí) */}
+              {/* Overlay para hover */}
               <rect
                 x={margin.left}
                 y={margin.top}
@@ -304,38 +328,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   {hover.estado} | {hover.fecha}
                 </text>
               )}
-
-              {/* Info de cada línea */}
-              <text
-                x={xScale(new Date(safeX1)) + 5}
-                y={margin.top + 15}
-                fontSize={12}
-                fill="black"
-              >
-                {estadoX1} | {new Date(safeX1).toLocaleString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
-              </text>
-              <text
-                x={xScale(new Date(safeX2)) + 5}
-                y={margin.top + 30}
-                fontSize={12}
-                fill="red"
-              >
-                {estadoX2} | {new Date(safeX2).toLocaleString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
-              </text>
             </svg>
-
-            {/* Diferencia entre líneas */}
-            <Typography sx={{ mt: 2, fontWeight: 500 }}>
-              Diferencia entre líneas: {diffMin} min ({diffSec} segundos)
-            </Typography>
           </CardContent>
         </Card>
       </Container>
