@@ -70,12 +70,25 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }, [endMs]);
 
   const handleFilter = () => {
-    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
-    setStartMs(startLocalMs);
-    setEndMs(endLocalMs);
-    fetchEvents(startLocalMs, endLocalMs);
-  };
+  const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
+  const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+  setStartMs(startLocalMs);
+  setEndMs(endLocalMs);
+  fetchEvents(startLocalMs, endLocalMs);
+  
+  useEffect(() => {
+  if (selectedX1 < startTimestamp) setSelectedX1(startTimestamp);
+  if (selectedX1 > endTimestamp) setSelectedX1(endTimestamp);
+  if (selectedX2 < startTimestamp) setSelectedX2(startTimestamp);
+  if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
+}, [startTimestamp, endTimestamp]);
+
+  // Ajustar líneas al nuevo rango
+  if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
+  if (endLocalMs !== null && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
+  if (startLocalMs !== null && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
+  if (endLocalMs !== null && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
+};
 
   // Escalas visx
   const width = 800;
