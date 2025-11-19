@@ -69,6 +69,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return Date.now();
   }, [endMs]);
 
+
+  const [selectedX1, setSelectedX1] = useState(startTimestamp);
+  const [selectedX2, setSelectedX2] = useState(endTimestamp);
   const handleFilter = () => {
   const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
   const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
@@ -146,8 +149,6 @@ useEffect(() => {
 }, [events, startTimestamp, endTimestamp]);
 
   // Líneas arrastrables
-  const [selectedX1, setSelectedX1] = useState(startTimestamp);
-  const [selectedX2, setSelectedX2] = useState(endTimestamp);
   const [dragging, setDragging] = useState<'x1' | 'x2' | null>(null);
 
   const handleMouseMove = useCallback(
