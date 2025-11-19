@@ -8,6 +8,7 @@ import {
   TextField,
   Button,
   Stack,
+  useMediaQuery,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useLocation } from 'wouter';
@@ -99,11 +100,20 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
   }, [startTimestamp, endTimestamp, selectedX1, selectedX2]);
 
-  // 🔧 ResizeObserver para ancho dinámico
+  // 🔧 ResizeObserver + useMediaQuery
   const chartRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const height = 400;
-  const margin = { top: 20, right: 100, bottom: 40, left: 100 };
+
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const isTablet = useMediaQuery('(max-width:1024px)');
+
+  const margin = {
+    top: 20,
+    bottom: 40,
+    left: isMobile ? 60 : isTablet ? 80 : 100,
+    right: isMobile ? 60 : isTablet ? 80 : 100,
+  };
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -122,7 +132,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
         domain: [new Date(startTimestamp), new Date(endTimestamp)],
         range: [margin.left, width - margin.right],
       }),
-    [startTimestamp, endTimestamp, width]
+    [startTimestamp, endTimestamp, width, margin.left, margin.right]
   );
 
   const yScale = useMemo(
@@ -131,7 +141,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
         domain: [0, 1],
         range: [height - margin.bottom, margin.top],
       }),
-    [height]
+    [height, margin.top, margin.bottom]
   );
 
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
