@@ -263,30 +263,39 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
               {/* Overlay para hover y drag */}
               <rect
-                x={margin.left}
-                y={margin.top}
-                width={width - margin.left - margin.right}
-                height={height - margin.top - margin.bottom}
-                fill="transparent"
-                onMouseMove={(e) => {
-                  handleMouseMove(e);
-                  const point = localPoint(e);
-                  if (!point) return;
-                  const ms = xScale.invert(point.x);
-                  const estado = stateAt(events, ms);
-                  setHover({
-                    x: point.x,
-                    y: point.y,
-                    fecha: ms.toLocaleString('es-ES', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    }),
-                    estado,
-                  });
-                }}
-                onMouseLeave={() => setHover(null)}
-              />
+  x={margin.left}
+  y={margin.top}
+  width={width - margin.left - margin.right}
+  height={height - margin.top - margin.bottom}
+  fill="transparent"
+  onMouseMove={(e) => {
+    const point = localPoint(e);
+    if (!point) return;
+
+    // --- DRAGGING ---
+    if (dragging) {
+      const ms = xScale.invert(point.x).getTime();
+      if (dragging === 'x1') setSelectedX1(ms);
+      if (dragging === 'x2') setSelectedX2(ms);
+    }
+
+    // --- HOVER ---
+    const msDate = xScale.invert(point.x);
+    const estado = stateAt(events, msDate);
+    setHover({
+      x: point.x,
+      y: point.y,
+      fecha: msDate.toLocaleString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      estado,
+    });
+  }}
+  onMouseLeave={() => setHover(null)}
+  onMouseUp={() => setDragging(null)}
+/>
 
               {/* Tooltip hover */}
               {hover && (
