@@ -101,7 +101,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const width = 800;
   const height = 400;
-  const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+  const margin = { top: 20, right: 60, bottom: 40, left: 60 };
 
   const xScale = useMemo(
     () =>
