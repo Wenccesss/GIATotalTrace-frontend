@@ -95,12 +95,6 @@ useEffect(() => {
   if (selectedX2 > endTimestamp) setSelectedX2(endTimestamp);
 }, [selectedX1, selectedX2, startTimestamp, endTimestamp]);
 
-  // Ajustar líneas al nuevo rango
-  if (startLocalMs !== null && selectedX1 < startLocalMs) setSelectedX1(startLocalMs);
-  if (endLocalMs !== null && selectedX1 > endLocalMs) setSelectedX1(endLocalMs);
-  if (startLocalMs !== null && selectedX2 < startLocalMs) setSelectedX2(startLocalMs);
-  if (endLocalMs !== null && selectedX2 > endLocalMs) setSelectedX2(endLocalMs);
-
 
   // Escalas visx
   const width = 800;
