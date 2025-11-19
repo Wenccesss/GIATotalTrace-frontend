@@ -65,7 +65,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
     if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000; // última hora por defecto
+    return Date.now() - 3600000;
   }, [startMs, events]);
 
   const endTimestamp = useMemo(() => {
@@ -86,12 +86,10 @@ export default function MachineView({ machineId }: { machineId: string }) {
     setEndMs(endLocalMs);
     fetchEvents(startLocalMs, endLocalMs);
 
-    // Recolocamos las líneas explícitamente al nuevo rango del filtro
     if (startLocalMs !== null) setSelectedX1(startLocalMs);
     if (endLocalMs !== null) setSelectedX2(endLocalMs);
   };
 
-  // Inicializa las líneas solo si están en null (no pisa el arrastre)
   useEffect(() => {
     if (selectedX1 === null && startTimestamp) {
       setSelectedX1(startTimestamp);
@@ -101,7 +99,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
   }, [startTimestamp, endTimestamp, selectedX1, selectedX2]);
 
-  // Escalas visx
   const width = 800;
   const height = 400;
   const margin = { top: 20, right: 30, bottom: 40, left: 60 };
@@ -124,7 +121,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
     [height]
   );
 
-  // Estado a tiempo (binary search coherente con curveStepAfter)
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' {
     if (sortedEvents.length === 0) return 'PARO';
     let lo = 0, hi = sortedEvents.length - 1, idx = -1;
@@ -163,22 +159,23 @@ export default function MachineView({ machineId }: { machineId: string }) {
     return series;
   }, [events, startTimestamp, endTimestamp]);
 
-  // Drag global en el SVG
+  const clamp = (ms: number) =>
+    Math.max(startTimestamp, Math.min(endTimestamp, ms));
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (!dragging) return;
       const point = localPoint(e);
       if (!point) return;
-      const ms = xScale.invert(point.x).getTime();
+      const ms = clamp(xScale.invert(point.x).getTime());
       if (dragging === 'x1') setSelectedX1(ms);
       else setSelectedX2(ms);
     },
-    [dragging, xScale]
+    [dragging, xScale, startTimestamp, endTimestamp]
   );
 
   const handleMouseUp = () => setDragging(null);
 
-  // Tooltip hover
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
   const safeX1 = selectedX1 ?? startTimestamp;
@@ -190,7 +187,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
-
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth="lg">
@@ -345,4 +341,4 @@ export default function MachineView({ machineId }: { machineId: string }) {
       </Container>
     </Box>
   );
-  }
+}
