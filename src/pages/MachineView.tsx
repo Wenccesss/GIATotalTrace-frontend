@@ -70,8 +70,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }, [endMs]);
 
 
-  const [selectedX1, setSelectedX1] = useState(startTimestamp);
-  const [selectedX2, setSelectedX2] = useState(endTimestamp);
+  const [selectedX1, setSelectedX1] = useState<number | null>(null);
+  const [selectedX2, setSelectedX2] = useState<number | null>(null);
   const handleFilter = () => {
   const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
   const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
@@ -245,8 +245,8 @@ useEffect(() => {
 
                 {/* Líneas arrastrables */}
                 <line
-  x1={xScale(new Date(selectedX1))}
-  x2={xScale(new Date(selectedX1))}
+  x1={xScale(new Date(selectedX1 ?? startTimestamp))}
+  x2={xScale(new Date(selectedX1 ?? startTimestamp))}
   y1={margin.top}
   y2={height - margin.bottom}
   stroke="black"
@@ -255,8 +255,8 @@ useEffect(() => {
   onMouseDown={() => setDragging('x1')}
 />
 <line
-  x1={xScale(new Date(selectedX2))}
-  x2={xScale(new Date(selectedX2))}
+  x1={xScale(new Date(selectedX2 ?? endTimestamp))}
+  x2={xScale(new Date(selectedX2 ?? endTimestamp))}
   y1={margin.top}
   y2={height - margin.bottom}
   stroke="red"
