@@ -158,7 +158,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const yScale = useMemo(
     () =>
       scaleLinear({
-        domain: [-0.2, 1],
+        domain: [0, 1],
         range: [height - margin.bottom, margin.top],
       }),
     [height, margin.top, margin.bottom]
@@ -315,7 +315,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   <AxisLeft
                     left={margin.left}
                     scale={yScale}
-                    tickValues={[0.1, 1]}
+                    tickValues={[0, 1]}
                     tickFormat={(v) => (v === 1 ? 'MARCHA' : v === 0 ? 'PARO' : '')}
                   />
 
