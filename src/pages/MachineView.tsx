@@ -199,28 +199,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
         </Button>
 
         <Card elevation={3} sx={{ borderRadius: 2, mb: 3 }}>
-  <CardContent sx={{ p: 0 }}>
-    <Box sx={{ width: '100%' }}>
-      <svg
-        width={width}
-        height={height}
-        style={{ background: '#fff' }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-      >
-        <Group>
-          <AxisBottom top={height - margin.bottom} scale={xScale} />
-          <AxisLeft
-            left={margin.left}
-            scale={yScale}
-            tickFormat={(v) => (v === 1 ? 'MARCHA' : 'PARO')}
-          />
-          {/* resto del gráfico */}
-        </Group>
-      </svg>
-    </Box>
-  </CardContent>
-</Card>
+           <CardContent sx={{ p: 0 }}>
             <Typography variant="h5" sx={{ color: '#2b6cb0', fontWeight: 600, mb: 2 }}>
               Estado de la máquina en el tiempo
             </Typography>
