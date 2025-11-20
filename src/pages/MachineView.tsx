@@ -9,6 +9,10 @@ import {
   Button,
   Stack,
   useMediaQuery,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useLocation } from 'wouter';
@@ -75,16 +79,24 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [selectedX2, setSelectedX2] = useState<number | null>(null);
   const [dragging, setDragging] = useState<'x1' | 'x2' | null>(null);
 
+  // Estado para el Dialog
+  const [openDialog, setOpenDialog] = useState(false);
+
   const handleFilter = () => {
-    const startLocalMs = startDateInput ? new Date(startDateInput).getTime() : null;
-    const endLocalMs = endDateInput ? new Date(endDateInput).getTime() : null;
+    if (!startDateInput || !endDateInput) {
+      setOpenDialog(true); // abre el Dialog si faltan fechas
+      return;
+    }
+
+    const startLocalMs = new Date(startDateInput).getTime();
+    const endLocalMs = new Date(endDateInput).getTime();
 
     setStartMs(startLocalMs);
     setEndMs(endLocalMs);
     fetchEvents(startLocalMs, endLocalMs);
 
-    if (startLocalMs !== null) setSelectedX1(startLocalMs);
-    if (endLocalMs !== null) setSelectedX2(endLocalMs);
+    setSelectedX1(startLocalMs);
+    setSelectedX2(endLocalMs);
   };
 
   useEffect(() => {
@@ -389,6 +401,17 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 )}
               </svg>
             </Box>
+
+            {/* Dialog de validación */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+              <DialogTitle>Atención</DialogTitle>
+              <DialogContent>
+                Debes seleccionar un rango de fechas antes de filtrar.
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
+              </DialogActions>
+            </Dialog>
           </CardContent>
         </Card>
       </Container>
