@@ -296,9 +296,10 @@ const exportCSV = () => {
   const header = "Estado, Fecha y Hora\n";
   const rows = events.map(ev => {
     const d = new Date(ev.hora);
-    // Formato: YYYY-MM-DD/HH:mm:ss.SSSZ
+    // Formato: YYYY-MM-DD/HH:mm:ss.SSS
     const fecha = d.toISOString()
       .replace('T', '/')        // sustituye la T por /
+      .slice(0, -1);            // elimina la Z final
       .replace(/\.\d{3}/, '');  // opcional: quitar milisegundos si no los quieres
     return `${ev.estado},${fecha}`;
   }).join("\n");
