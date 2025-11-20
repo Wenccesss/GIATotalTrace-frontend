@@ -44,7 +44,7 @@ import html2canvas from "html2canvas";
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
-  horaMs: number; // 👈 unificado a número
+  hora: string;
 }
 
 export default function MachineView({ machineId }: { machineId: string }) {
@@ -56,42 +56,40 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [endMs, setEndMs] = useState<number | null>(null);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
-  try {
-    let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
-    if (start || end) {
-      const params = new URLSearchParams();
-      if (start) params.append('start', new Date(start!).toISOString());
-      if (end) params.append('end', new Date(end!).toISOString());
-      url += `?${params.toString()}`;
+    try {
+      let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
+      if (start || end) {
+        const params = new URLSearchParams();
+        if (start) params.append('start', new Date(start!).toISOString());
+        if (end) params.append('end', new Date(end!).toISOString());
+        url += `?${params.toString()}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
+      const normalized: Event[] = arr
+        .map((e: any) => ({
+          id: String(e.id ?? ''),
+          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+          hora: String(e.hora),
+        }))
+        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+      setEvents(normalized);
+    } catch (err) {
+      console.error('Error fetching events', err);
     }
-    const res = await fetch(url);
-    const data = await res.json();
-    const arr = Array.isArray(data) ? data : [];
-
-    const normalized: Event[] = arr
-  .map((e: any) => ({
-    id: String(e.id ?? ''),
-    estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-    horaMs: new Date(e.hora).getTime(), // 👈 ms UTC del backend
-  }))
-  .sort((a, b) => a.horaMs - b.horaMs);
-
-setEvents(normalized);
-  } catch (err) {
-    console.error('Error fetching events', err);
-  }
-};
+  };
 
   const startTimestamp = useMemo(() => {
-  if (startMs !== null) return startMs;
-  if (events[0]) return events[0].horaMs;
-  return Date.now() - 3600000;
-}, [startMs, events]);
+    if (startMs !== null) return startMs;
+    if (events[0]) return new Date(events[0].hora).getTime();
+    return Date.now() - 3600000;
+  }, [startMs, events]);
 
-const endTimestamp = useMemo(() => {
-  if (endMs !== null) return endMs;
-  return Date.now();
-}, [endMs]);
+  const endTimestamp = useMemo(() => {
+    if (endMs !== null) return endMs;
+    return Date.now();
+  }, [endMs]);
 
   // Líneas arrastrables
   const [selectedX1, setSelectedX1] = useState<number | null>(null);
@@ -198,57 +196,59 @@ const endTimestamp = useMemo(() => {
   );
   // Estado en un momento (búsqueda binaria)
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' | null {
-  if (sortedEvents.length === 0) return null;
-  let lo = 0, hi = sortedEvents.length - 1, idx = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const tMid = sortedEvents[mid].horaMs;
-    if (tMid <= ms) {
-      idx = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
+    if (sortedEvents.length === 0) return null;
+    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const tMid = new Date(sortedEvents[mid].hora).getTime();
+      if (tMid <= ms) {
+        idx = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
     }
+    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
   }
-  return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
-}
 
   // Datos para el gráfico
   const chartData = useMemo(() => {
-  if (!currentRange || events.length === 0) return [];
-  const series: { x: number; y: number }[] = [];
+    if (!currentRange || events.length === 0) return [];
+    const series: { x: number; y: number }[] = [];
+    const sorted = [...events];
 
-  const zoomStart = currentRange[0];
-  const zoomEnd = currentRange[1];
+    const zoomStart = currentRange[0];
+    const zoomEnd = currentRange[1];
 
-  const initialState = stateAt(events, zoomStart);
-  if (initialState) {
-    series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
-  }
-
-  for (const ev of events) {
-    const t = ev.horaMs;
-    if (t >= zoomStart && t <= zoomEnd) {
-      series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+    const initialState = stateAt(sorted, zoomStart);
+    if (initialState) {
+      series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
     }
-  }
 
-  const finalState = stateAt(events, zoomEnd);
-  if (finalState) {
-    series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
-  }
+    for (const ev of sorted) {
+      const t = new Date(ev.hora).getTime();
+      if (t >= zoomStart && t <= zoomEnd) {
+        series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
+      }
+    }
 
-  series.sort((a, b) => a.x - b.x);
-  return series;
-}, [events, currentRange]);
+    const finalState = stateAt(sorted, zoomEnd);
+    if (finalState) {
+      series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
+    }
+
+    series.sort((a, b) => a.x - b.x);
+    return series;
+  }, [events, currentRange]);
 
   // Límite dinámico de eventos (12 px por evento)
   const PIXELS_PER_EVENT = 12;
   const tooManyEvents = useMemo(() => {
     if (!currentRange || events.length === 0 || width === 0) return false;
     const filtered = events.filter(ev => {
-  return ev.horaMs >= currentRange[0] && ev.horaMs <= currentRange[1];
-});
+      const t = new Date(ev.hora).getTime();
+      return t >= currentRange[0] && t <= currentRange[1];
+    });
     const maxEvents = Math.floor((width - margin.left - margin.right) / PIXELS_PER_EVENT);
     const exceeds = filtered.length > maxEvents;
     if (exceeds) setOpenTooManyDialog(true);
@@ -313,9 +313,12 @@ const exportCSV = () => {
   }
   const header = "Estado, Fecha y Hora\n";
   const rows = events.map(ev => {
-    const d = new Date(ev.horaMs);
+    const d = new Date(ev.hora);
     // Formato: YYYY-MM-DD/HH:mm:ss.SSS
-    const fecha = new Date(ev.horaMs).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });     
+    const fecha = d.toISOString()
+      .replace('T', '/')        // sustituye la T por /
+      .slice(0, -1)            // elimina la Z final
+      .replace(/\.\d{3}/, '');  // opcional: quitar milisegundos si no los quieres
     return `${ev.estado},${fecha}`;
   }).join("\n");
 
@@ -384,149 +387,106 @@ const exportCSV = () => {
               TRAZABILIDAD MAQUINA-1
             </Typography>
 
-            {isMobile ? (
-  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-    {/* Fila: Inicio y Fin */}
-    <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
-      {/* Inicio */}
-      <Box sx={{ flex: 1 }}>
-        <TextField
-          label="Inicio"
-          type="datetime-local"
-          value={startDateInput}
-          onChange={(e) => setStartDateInput(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          inputProps={{
-            min: threeMonthsAgo.toISOString().slice(0, 16),
-            max: new Date().toISOString().slice(0, 16),
-          }}
-          onKeyDown={(e) => e.preventDefault()}
-          fullWidth
-        />
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              justifyContent="center"
+              sx={{ mb: 2, flexWrap: 'wrap', textAlign: 'center', width: '100%' }}
+            >
+              <TextField
+                label="Inicio"
+                type="datetime-local"
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: threeMonthsAgo.toISOString().slice(0,16),
+                  max: new Date().toISOString().slice(0,16),
+                }}
+                onKeyDown={(e) => e.preventDefault()} // bloquea escritura manual
+              />
 
-        {/* Botones debajo de Inicio, alineados a la izquierda */}
-        <Stack direction="column" spacing={1} sx={{ mt: 2 }}>
-          <Button
-            variant="contained"
-            color="info"
-            startIcon={<FilterAltIcon />}
-            onClick={handleFilter}
-            fullWidth
-          >
-            Filtrar
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<ZoomInIcon />}
-            onClick={handleZoomIn}
-            fullWidth
-          >
-            Zoom In
-          </Button>
-          <Button
-            variant="contained"
-            color="warning"
-            startIcon={<ZoomOutIcon />}
-            onClick={handleZoomOut}
-            fullWidth
-          >
-            Zoom Out
-          </Button>
-        </Stack>
-      </Box>
+              <TextField
+                label="Fin"
+                type="datetime-local"
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                disabled={!startDateInput}
+                inputProps={{
+                  min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
+                  max: new Date().toISOString().slice(0,16),
+                }}
+                onKeyDown={(e) => e.preventDefault()} // bloquea escritura manual
+              />
 
-      {/* Fin */}
-      <Box sx={{ flex: 1 }}>
-        <TextField
-          label="Fin"
-          type="datetime-local"
-          value={endDateInput}
-          onChange={(e) => setEndDateInput(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          disabled={!startDateInput}
-          inputProps={{
-            min: startDateInput || threeMonthsAgo.toISOString().slice(0, 16),
-            max: new Date().toISOString().slice(0, 16),
-          }}
-          onKeyDown={(e) => e.preventDefault()}
-          fullWidth
-        />
+              <Button
+  variant="contained"
+  color="info"
+  startIcon={<FilterAltIcon />}
+  onClick={handleFilter}
+>
+  Filtrar
+</Button>
 
-        {/* Textos debajo de Fin */}
-        <Box sx={{ mt: 2 }}>
-          <Typography sx={{ fontWeight: 500, color: 'black' }}>
-            {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleTimeString('es-ES')}
-          </Typography>
-          <Typography sx={{ fontWeight: 500, color: 'red', mt: 1 }}>
-            {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleTimeString('es-ES')}
-          </Typography>
-          <Typography sx={{ fontWeight: 600, mt: 1 }}>
-            {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
-            {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
-            {String(diffSec % 60).padStart(2, '0')}
-          </Typography>
-        </Box>
-      </Box>
-    </Stack>
-  </Box>
-) : (
-  // 🖥️ Layout PC (tu Stack original)
-  <Stack
-    direction="row"
-    spacing={2}
-    alignItems="center"
-    justifyContent="center"
-    sx={{ mb: 2, flexWrap: 'wrap', textAlign: 'center', width: '100%' }}
-  >
-    <TextField
-      label="Inicio"
-      type="datetime-local"
-      value={startDateInput}
-      onChange={(e) => setStartDateInput(e.target.value)}
-      InputLabelProps={{ shrink: true }}
-      inputProps={{
-        min: threeMonthsAgo.toISOString().slice(0, 16),
-        max: new Date().toISOString().slice(0, 16),
-      }}
-      onKeyDown={(e) => e.preventDefault()}
-    />
+              <Button
+  variant="contained"
+  color="success"
+  startIcon={<ZoomInIcon />}
+  onClick={handleZoomIn}
+>
+  Zoom In
+</Button>
+              <Button
+  variant="contained"
+  color="warning"
+  startIcon={<ZoomOutIcon />}
+  onClick={handleZoomOut}
+>
+  Zoom Out
+</Button>
+<Button
+  variant="contained"
+  color="primary"
+  startIcon={<FileDownloadIcon />}
+  onClick={exportCSV}
+>
+  Exportar CSV
+</Button>
+                  <Button
+  variant="contained"
+  color="secondary"
+  startIcon={<PictureAsPdfIcon />}
+  onClick={exportPDF}
+>
+  Exportar PDF
+</Button>
 
-    <TextField
-      label="Fin"
-      type="datetime-local"
-      value={endDateInput}
-      onChange={(e) => setEndDateInput(e.target.value)}
-      InputLabelProps={{ shrink: true }}
-      disabled={!startDateInput}
-      inputProps={{
-        min: startDateInput || threeMonthsAgo.toISOString().slice(0, 16),
-        max: new Date().toISOString().slice(0, 16),
-      }}
-      onKeyDown={(e) => e.preventDefault()}
-    />
 
-    <Button variant="contained" color="info" startIcon={<FilterAltIcon />} onClick={handleFilter}>
-      Filtrar
-    </Button>
 
-    <Button variant="contained" color="success" startIcon={<ZoomInIcon />} onClick={handleZoomIn}>
-      Zoom In
-    </Button>
-
-    <Button variant="contained" color="warning" startIcon={<ZoomOutIcon />} onClick={handleZoomOut}>
-      Zoom Out
-    </Button>
-
-    <Button variant="contained" color="primary" startIcon={<FileDownloadIcon />} onClick={exportCSV}>
-      Exportar CSV
-    </Button>
-
-    <Button variant="contained" color="secondary" startIcon={<PictureAsPdfIcon />} onClick={exportPDF}>
-      Exportar PDF
-    </Button>
-  </Stack>
-)}
+              <Box sx={{ ml: 3 }}>
+                <Typography sx={{ fontWeight: 500, color: 'black' }}>
+                  {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </Typography>
+                <Typography sx={{ fontWeight: 500, color: 'red' }}>
+                  {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </Typography>
+                <Typography sx={{ mt: 1, fontWeight: 600 }}>
+                  {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+                  {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+                  {String(diffSec % 60).padStart(2, '0')}
+                </Typography>
+              </Box>
+            </Stack>
 
             <Box ref={chartRef} sx={{ width: '100%' }}>
               {tooManyEvents ? (
@@ -551,10 +511,9 @@ const exportCSV = () => {
                       scale={xScale}
                       tickValues={tickValues}
                       tickFormat={(d) =>
-                        new Date(d as number).toLocaleTimeString('es-ES', {
+                        new Date(d as Date).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
-                          timeZone: 'Europe/Madrid'
                         })
                       }
                     />
@@ -640,7 +599,6 @@ const exportCSV = () => {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
-                          timeZone: 'Europe/Madrid'
                         }),
                         estado: estado ?? 'Sin estado',
                       });
@@ -656,28 +614,6 @@ const exportCSV = () => {
                 </svg>
               )}
             </Box>
-             {isMobile && (
-  <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
-    <Button
-      variant="contained"
-      color="primary"
-      startIcon={<FileDownloadIcon />}
-      onClick={exportCSV}
-    >
-      Exportar CSV
-    </Button>
-    <Button
-      variant="contained"
-      color="secondary"
-      startIcon={<PictureAsPdfIcon />}
-      onClick={exportPDF}
-    >
-      Exportar PDF
-    </Button>
-  </Stack>
-)}
-
-
             {/* Tabla de eventos debajo de la gráfica */}
 <TableContainer component={Paper} sx={{ mt: 3, maxHeight: 300 }}>
   <Table stickyHeader size="small">
@@ -699,7 +635,7 @@ const exportCSV = () => {
           // 🔧 Opcional: filtrar por rango actual
           .filter(ev => {
             if (!currentRange) return true;
-            const t = new Date(ev.horaMs).getTime();
+            const t = new Date(ev.hora).getTime();
             return t >= currentRange[0] && t <= currentRange[1];
           })
           .map((ev, idx) => (
@@ -710,14 +646,13 @@ const exportCSV = () => {
                 {ev.estado}
               </TableCell>
               <TableCell>
-                {new Date(ev.horaMs).toLocaleString('es-ES', {
+                {new Date(ev.hora).toLocaleString('es-ES', {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
-                  timeZone: 'Europe/Madrid'
                 })}
               </TableCell>
             </TableRow>
@@ -767,8 +702,9 @@ const exportCSV = () => {
     {(() => {
       // Calculamos seleccionados y máximo permitido
       const filtered = events.filter(ev => {
-  return currentRange && ev.horaMs >= currentRange[0] && ev.horaMs <= currentRange[1];
-});
+        const t = new Date(ev.hora).getTime();
+        return currentRange && t >= currentRange[0] && t <= currentRange[1];
+      });
       const selectedCount = filtered.length;
       const maxEvents = Math.floor((width - margin.left - margin.right) / PIXELS_PER_EVENT);
 
