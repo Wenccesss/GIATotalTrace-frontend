@@ -318,8 +318,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  style: { pointerEvents: 'none' }
                 }}
+                onKeyDown={(e) => e.preventDefault()} // 🔒 bloquea escritura manual
               />
 
               <TextField
@@ -332,8 +332,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  style: { pointerEvents: 'none' }
                 }}
+                onKeyDown={(e) => e.preventDefault()} // 🔒 bloquea escritura manual
               />
 
               <Button variant="contained" color="primary" onClick={handleFilter}>
