@@ -446,20 +446,20 @@ const exportCSV = () => {
           height: '100%', // ocupa la misma altura que la columna izquierda
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between', // reparte los textos en vertical
+          justifyContent: 'flex-start', // reparte los textos en vertical
         }}
       >
-        <Typography sx={{ fontWeight: 500, color: 'black', mb: 1.5 }}>
+        <Typography sx={{ fontWeight: 500, color: 'black', mt: 0 }}>
           {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
             hour: '2-digit', minute: '2-digit', second: '2-digit',
           })}
         </Typography>
-        <Typography sx={{ fontWeight: 500, color: 'red', mb: 1.5 }}>
+        <Typography sx={{ fontWeight: 500, color: 'red', mt: 3 }}>
           {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
             hour: '2-digit', minute: '2-digit', second: '2-digit',
           })}
         </Typography>
-        <Typography sx={{ fontWeight: 600 }}>
+        <Typography sx={{ fontWeight: 600, mt: 3 }}>
           {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
           {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
           {String(diffSec % 60).padStart(2, '0')}
