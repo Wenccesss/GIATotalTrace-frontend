@@ -392,9 +392,9 @@ const exportCSV = () => {
 
 {isMobile ? (
   // 📱 MOBILE
-  <Stack direction="row" spacing={2} justifyContent="space-between" sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
+  <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
     {/* Columna izquierda: Inicio + botones */}
-    <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
+    <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
       <TextField
         label="Inicio"
         type="datetime-local"
@@ -420,7 +420,7 @@ const exportCSV = () => {
     </Stack>
 
     {/* Columna derecha: Fin + rectángulo gris con textos */}
-    <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
+    <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
       <TextField
         label="Fin"
         type="datetime-local"
@@ -438,32 +438,46 @@ const exportCSV = () => {
       <Paper
         elevation={2}
         sx={{
-          mt: 1,
           p: 2,
           backgroundColor: '#f5f5f5',
           borderRadius: 2,
-          width: '150px',
-          height: '100%', // ocupa la misma altura que la columna izquierda
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start', // reparte los textos en vertical
+          width: '100%',
+          height: 'auto', // 👈 más compacto, no se pasa de alto
         }}
       >
-        <Typography sx={{ fontWeight: 500, color: 'black', mt: 0 }}>
-          {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-          })}
-        </Typography>
-        <Typography sx={{ fontWeight: 500, color: 'red', mt: 2 }}>
-          {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-          })}
-        </Typography>
-        <Typography sx={{ fontWeight: 600, mt:2 }}>
-          {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
-          {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
-          {String(diffSec % 60).padStart(2, '0')}
-        </Typography>
+        {/* Cada fila alinea texto con botón */}
+        <Stack direction="column" spacing={2}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontWeight: 500, color: 'black' }}>
+              {estadoX1 ?? 'Sin estado'}
+            </Typography>
+            <Typography>
+              {new Date(safeX1).toLocaleString('es-ES', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+              })}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontWeight: 500, color: 'red' }}>
+              {estadoX2 ?? 'Sin estado'}
+            </Typography>
+            <Typography>
+              {new Date(safeX2).toLocaleString('es-ES', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+              })}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontWeight: 600 }}>
+              Diferencia
+            </Typography>
+            <Typography>
+              {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+              {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+              {String(diffSec % 60).padStart(2, '0')}
+            </Typography>
+          </Box>
+        </Stack>
       </Paper>
     </Stack>
   </Stack>
