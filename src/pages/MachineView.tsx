@@ -315,7 +315,7 @@ const exportCSV = () => {
   const rows = events.map(ev => {
     const d = new Date(ev.horaMs);
     // Formato: YYYY-MM-DD/HH:mm:ss.SSS
-    const fecha = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });     
+    const fecha = new Date(ev.horaMs).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });     
     return `${ev.estado},${fecha}`;
   }).join("\n");
 
@@ -554,6 +554,7 @@ const exportCSV = () => {
                         new Date(d as number).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: 'Europe/Madrid'
                         })
                       }
                     />
@@ -639,6 +640,7 @@ const exportCSV = () => {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
+                          timeZone: 'Europe/Madrid'
                         }),
                         estado: estado ?? 'Sin estado',
                       });
@@ -715,6 +717,7 @@ const exportCSV = () => {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
+                  timeZone: 'Europe/Madrid'
                 })}
               </TableCell>
             </TableRow>
