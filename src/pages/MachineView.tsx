@@ -24,6 +24,8 @@ import {
   DialogActions,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useLocation } from 'wouter';
 
 import { scaleTime, scaleLinear } from '@visx/scale';
@@ -449,12 +451,22 @@ const exportCSV = () => {
                 </Typography>
 
                 <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                  <Button variant="contained" color="primary" onClick={exportCSV}>
-                    CSV
-                  </Button>
-                  <Button variant="contained" color="primary" onClick={exportPDF}>
-                    PDF
-                  </Button>
+                  <Button
+  variant="contained"
+  color="primary"
+  startIcon={<FileDownloadIcon />}
+  onClick={exportCSV}
+>
+  Exportar CSV
+</Button>
+                  <Button
+  variant="contained"
+  color="secondary"
+  startIcon={<PictureAsPdfIcon />}
+  onClick={exportPDF}
+>
+  Exportar PDF
+</Button>
                 </Stack>
               </Box>
             </Stack>
