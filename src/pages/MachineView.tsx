@@ -320,6 +320,10 @@ const exportCSV = () => {
 
   // Exportar PDF
   const exportPDF = async () => {
+    if (!events.length) {
+    setOpenNoEventsDialog(true); // abre el mismo diálogo de “sin eventos”
+    return;
+  }
     if (!chartRef.current) return;
     const canvas = await html2canvas(chartRef.current);
     const imgData = canvas.toDataURL("image/png");
