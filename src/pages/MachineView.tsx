@@ -24,6 +24,9 @@ import { localPoint } from '@visx/event';
 import { Group } from '@visx/group';
 import { curveStepAfter } from 'd3-shape';
 
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
@@ -219,7 +222,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const clamp = (ms: number) =>
     currentRange ? Math.max(currentRange[0], Math.min(currentRange[1], ms)) : ms;
-
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (!dragging || !currentRange) return;
@@ -247,6 +249,37 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   // 🔧 límite de 3 meses atrás
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  // --- Exportar CSV ---
+  const exportCSV = () => {
+    if (!events.length) return;
+    const header = "id,estado,hora\n";
+    const rows = events.map(ev => `${ev.id},${ev.estado},${ev.hora}`).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `trazabilidad_${machineId}_${new Date().toISOString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // --- Exportar PDF ---
+  const exportPDF = async () => {
+    if (!chartRef.current) return;
+    const canvas = await html2canvas(chartRef.current);
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("l", "pt", "a4"); // orientación horizontal
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth - 40;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 20, 20, imgWidth, imgHeight);
+    pdf.save(`trazabilidad_${machineId}_${new Date().toISOString()}.pdf`);
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
@@ -285,7 +318,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  style: { pointerEvents: 'none' } // 🔒 bloquea escritura manual
+                  style: { pointerEvents: 'none' }
                 }}
               />
 
@@ -299,7 +332,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  style: { pointerEvents: 'none' } // 🔒 bloquea escritura manual
+                  style: { pointerEvents: 'none' }
                 }}
               />
 
@@ -334,6 +367,16 @@ export default function MachineView({ machineId }: { machineId: string }) {
                   {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
                   {String(diffSec % 60).padStart(2, '0')}
                 </Typography>
+
+                {/* Botones de exportación CSV y PDF */}
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <Button variant="contained" color="primary" onClick={exportCSV}>
+                    CSV
+                  </Button>
+                  <Button variant="contained" color="primary" onClick={exportPDF}>
+                    PDF
+                  </Button>
+                </Stack>
               </Box>
             </Stack>
 
@@ -400,37 +443,37 @@ export default function MachineView({ machineId }: { machineId: string }) {
                       x: point.x,
                       y: point.y,
                       fecha: msDate.toLocaleString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      }),
-                      estado: estado ?? 'Sin estado',
-                    });
-                  }}
-                  onMouseLeave={() => setHover(null)}
-                />
+                      hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        }),
+                        estado: estado ?? 'Sin estado',
+                      });
+                    }}
+                    onMouseLeave={() => setHover(null)}
+                  />
 
-                {hover && (
-                  <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
-                    {hover.estado} | {hover.fecha}
-                  </text>
-                )}
-              </svg>
-            </Box>
+                  {hover && (
+                    <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
+                      {hover.estado} | {hover.fecha}
+                    </text>
+                  )}
+                </svg>
+              </Box>
 
-            {/* Dialog de validación */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-              <DialogTitle>Atención</DialogTitle>
-              <DialogContent>
-                Debes seleccionar un rango de fechas antes de filtrar.
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
-              </DialogActions>
-            </Dialog>
-          </CardContent>
-        </Card>
-      </Container>
-    </Box>
+              {/* Dialog de validación */}
+              <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+                <DialogTitle>Atención</DialogTitle>
+                <DialogContent>
+                  Debes seleccionar un rango de fechas antes de filtrar.
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
+                </DialogActions>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </Container>
+      </Box>
   );
 }
