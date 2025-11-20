@@ -438,11 +438,13 @@ const exportCSV = () => {
       <Paper
         elevation={2}
         sx={{
+          mt: 0.5, // 👈 sube el rectángulo
           p: 2,
+          pt: 1,   // 👈 sube los textos dentro
           backgroundColor: '#f5f5f5',
           borderRadius: 2,
           width: '100%',
-          height: 'auto', // 👈 más compacto, no se pasa de alto
+          
         }}
       >
         {/* Cada fila alinea texto con botón */}
