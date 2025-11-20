@@ -44,7 +44,7 @@ import html2canvas from "html2canvas";
 interface Event {
   id: string;
   estado: 'MARCHA' | 'PARO';
-  hora: string;
+  horaMs: number; // 👈 unificado a número
 }
 
 export default function MachineView({ machineId }: { machineId: string }) {
@@ -68,30 +68,30 @@ export default function MachineView({ machineId }: { machineId: string }) {
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
 
-    const normalized: Event[] = arr.map((e: any) => ({
-      id: String(e.id ?? ''),
-      estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-      // 👇 Guardamos como objeto Date en UTC
-      hora: new Date(e.hora),
-    }))
-    .sort((a, b) => a.hora.getTime() - b.hora.getTime());
+    const normalized: Event[] = arr
+  .map((e: any) => ({
+    id: String(e.id ?? ''),
+    estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+    horaMs: new Date(e.hora).getTime(), // 👈 ms UTC del backend
+  }))
+  .sort((a, b) => a.horaMs - b.horaMs);
 
-    setEvents(normalized);
+setEvents(normalized);
   } catch (err) {
     console.error('Error fetching events', err);
   }
 };
 
   const startTimestamp = useMemo(() => {
-    if (startMs !== null) return startMs;
-    if (events[0]) return new Date(events[0].hora).getTime();
-    return Date.now() - 3600000;
-  }, [startMs, events]);
+  if (startMs !== null) return startMs;
+  if (events[0]) return events[0].horaMs;
+  return Date.now() - 3600000;
+}, [startMs, events]);
 
-  const endTimestamp = useMemo(() => {
-    if (endMs !== null) return endMs;
-    return Date.now();
-  }, [endMs]);
+const endTimestamp = useMemo(() => {
+  if (endMs !== null) return endMs;
+  return Date.now();
+}, [endMs]);
 
   // Líneas arrastrables
   const [selectedX1, setSelectedX1] = useState<number | null>(null);
@@ -198,20 +198,20 @@ export default function MachineView({ machineId }: { machineId: string }) {
   );
   // Estado en un momento (búsqueda binaria)
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' | null {
-    if (sortedEvents.length === 0) return null;
-    let lo = 0, hi = sortedEvents.length - 1, idx = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const tMid = new Date(sortedEvents[mid].hora).getTime();
-      if (tMid <= ms) {
-        idx = mid;
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
+  if (sortedEvents.length === 0) return null;
+  let lo = 0, hi = sortedEvents.length - 1, idx = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const tMid = sortedEvents[mid].horaMs;
+    if (tMid <= ms) {
+      idx = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
     }
-    return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
   }
+  return idx === -1 ? sortedEvents[0].estado : sortedEvents[idx].estado;
+}
 
   // Datos para el gráfico
   const chartData = useMemo(() => {
@@ -227,10 +227,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }
 
   for (const ev of events) {
-    // 👇 Convertimos explícitamente a hora local de Madrid
-    const local = ev.hora.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
-    const t = new Date(local).getTime();
-
+    const t = ev.horaMs;
     if (t >= zoomStart && t <= zoomEnd) {
       series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
     }
@@ -317,9 +314,9 @@ const exportCSV = () => {
   }
   const header = "Estado, Fecha y Hora\n";
   const rows = events.map(ev => {
-    const d = new Date(ev.hora);
+    const d = new Date(ev.horaMs);
     // Formato: YYYY-MM-DD/HH:mm:ss.SSS
-    const fecha = d.toISOString()
+    const fecha = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
       .replace('T', '/')        // sustituye la T por /
       .slice(0, -1)            // elimina la Z final
       .replace(/\.\d{3}/, '');  // opcional: quitar milisegundos si no los quieres
@@ -558,7 +555,7 @@ const exportCSV = () => {
                       scale={xScale}
                       tickValues={tickValues}
                       tickFormat={(d) =>
-                        new Date(d as Date).toLocaleTimeString('es-ES', {
+                        new Date(d as number).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })
@@ -704,7 +701,7 @@ const exportCSV = () => {
           // 🔧 Opcional: filtrar por rango actual
           .filter(ev => {
             if (!currentRange) return true;
-            const t = new Date(ev.hora).getTime();
+            const t = new Date(ev.horaMs).getTime();
             return t >= currentRange[0] && t <= currentRange[1];
           })
           .map((ev, idx) => (
@@ -771,9 +768,8 @@ const exportCSV = () => {
     {(() => {
       // Calculamos seleccionados y máximo permitido
       const filtered = events.filter(ev => {
-        const t = new Date(ev.hora).getTime();
-        return currentRange && t >= currentRange[0] && t <= currentRange[1];
-      });
+  return currentRange && ev.horaMs >= currentRange[0] && ev.horaMs <= currentRange[1];
+});
       const selectedCount = filtered.length;
       const maxEvents = Math.floor((width - margin.left - margin.right) / PIXELS_PER_EVENT);
 
