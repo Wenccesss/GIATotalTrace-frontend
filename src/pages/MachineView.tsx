@@ -56,28 +56,31 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [endMs, setEndMs] = useState<number | null>(null);
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
-    try {
-      let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
-      if (start || end) {
-        const params = new URLSearchParams();
-        if (start) params.append('start', new Date(start!).toISOString());
-        if (end) params.append('end', new Date(end!).toISOString());
-        url += `?${params.toString()}`;
-      }
-      const res = await fetch(url);
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : [];
-      const normalized: Event[] = arr.map((e: any) => ({
-  id: String(e.id ?? ''),
-  estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-  hora: new Date(e.hora), // 👈 objeto Date
-}))
-.sort((a, b) => a.hora.getTime() - b.hora.getTime());
-      setEvents(normalized);
-    } catch (err) {
-      console.error('Error fetching events', err);
+  try {
+    let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
+    if (start || end) {
+      const params = new URLSearchParams();
+      if (start) params.append('start', new Date(start!).toISOString());
+      if (end) params.append('end', new Date(end!).toISOString());
+      url += `?${params.toString()}`;
     }
-  };
+    const res = await fetch(url);
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : [];
+
+    const normalized: Event[] = arr.map((e: any) => ({
+      id: String(e.id ?? ''),
+      estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+      // 👇 Guardamos como objeto Date en UTC
+      hora: new Date(e.hora),
+    }))
+    .sort((a, b) => a.hora.getTime() - b.hora.getTime());
+
+    setEvents(normalized);
+  } catch (err) {
+    console.error('Error fetching events', err);
+  }
+};
 
   const startTimestamp = useMemo(() => {
     if (startMs !== null) return startMs;
@@ -224,7 +227,10 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }
 
   for (const ev of events) {
-    const t = ev.hora.getTime();
+    // 👇 Convertimos explícitamente a hora local de Madrid
+    const local = ev.hora.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+    const t = new Date(local).getTime();
+
     if (t >= zoomStart && t <= zoomEnd) {
       series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
     }
