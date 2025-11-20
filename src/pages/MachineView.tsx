@@ -84,7 +84,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const handleFilter = () => {
     if (!startDateInput || !endDateInput) {
-      setOpenDialog(true); // abre el Dialog si faltan fechas
+      setOpenDialog(true);
       return;
     }
 
@@ -172,7 +172,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
     [height, margin.top, margin.bottom]
   );
 
-  // 🔧 Devuelve null si no hay eventos
   function stateAt(sortedEvents: Event[], ms: number): 'MARCHA' | 'PARO' | null {
     if (sortedEvents.length === 0) return null;
     let lo = 0, hi = sortedEvents.length - 1, idx = -1;
@@ -232,6 +231,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     },
     [dragging, xScale, currentRange]
   );
+
   const handleMouseUp = () => setDragging(null);
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
@@ -244,6 +244,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const diffMs = Math.abs(safeX2 - safeX1);
   const diffSec = Math.floor(diffMs / 1000);
+
+  // 🔧 límite de 3 meses atrás
+  const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
@@ -279,14 +282,25 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: threeMonthsAgo.toISOString().slice(0,16),
+                  max: new Date().toISOString().slice(0,16)
+                }}
               />
+
               <TextField
                 label="Fin"
                 type="datetime-local"
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                disabled={!startDateInput}
+                inputProps={{
+                  min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
+                  max: new Date().toISOString().slice(0,16)
+                }}
               />
+
               <Button variant="contained" color="primary" onClick={handleFilter}>
                 Filtrar
               </Button>
