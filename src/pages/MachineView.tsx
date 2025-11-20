@@ -1,5 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from '@mui/material';
+import {
   Box,
   Container,
   Typography,
@@ -550,7 +559,53 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 </svg>
               )}
             </Box>
-
+            {/* Tabla de eventos debajo de la gráfica */}
+<TableContainer component={Paper} sx={{ mt: 3, maxHeight: 300 }}>
+  <Table stickyHeader size="small">
+    <TableHead>
+      <TableRow>
+        <TableCell>Estado</TableCell>
+        <TableCell>Fecha / Hora</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {events.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={2} align="center">
+            No hay eventos en el rango seleccionado.
+          </TableCell>
+        </TableRow>
+      ) : (
+        events
+          // 🔧 Opcional: filtrar por rango actual
+          .filter(ev => {
+            if (!currentRange) return true;
+            const t = new Date(ev.hora).getTime();
+            return t >= currentRange[0] && t <= currentRange[1];
+          })
+          .map((ev, idx) => (
+            <TableRow key={idx}>
+              <TableCell
+                sx={{ fontWeight: 600, color: ev.estado === 'MARCHA' ? 'green' : 'red' }}
+              >
+                {ev.estado}
+              </TableCell>
+              <TableCell>
+                {new Date(ev.hora).toLocaleString('es-ES', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })}
+              </TableCell>
+            </TableRow>
+          ))
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
             {/* Dialogs */}
             <Dialog open={openTooManyDialog} onClose={() => setOpenTooManyDialog(false)}>
   <DialogTitle>Eventos no mostrados</DialogTitle>
