@@ -130,6 +130,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const isMobile = useMediaQuery('(max-width:600px)');
   const isTablet = useMediaQuery('(max-width:1024px)');
+  
 
   const margin = {
     top: 20,
@@ -387,106 +388,131 @@ const exportCSV = () => {
               TRAZABILIDAD MAQUINA-1
             </Typography>
 
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              justifyContent="center"
-              sx={{ mb: 2, flexWrap: 'wrap', textAlign: 'center', width: '100%' }}
-            >
-              <TextField
-                label="Inicio"
-                type="datetime-local"
-                value={startDateInput}
-                onChange={(e) => setStartDateInput(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{
-                  min: threeMonthsAgo.toISOString().slice(0,16),
-                  max: new Date().toISOString().slice(0,16),
-                }}
-                onKeyDown={(e) => e.preventDefault()} // bloquea escritura manual
-              />
+            
 
-              <TextField
-                label="Fin"
-                type="datetime-local"
-                value={endDateInput}
-                onChange={(e) => setEndDateInput(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                disabled={!startDateInput}
-                inputProps={{
-                  min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
-                  max: new Date().toISOString().slice(0,16),
-                }}
-                onKeyDown={(e) => e.preventDefault()} // bloquea escritura manual
-              />
+{isMobile ? (
+  // 📱 MOBILE
+  <Stack spacing={2} sx={{ mb: 2, width: '100%' }}>
+    {/* Labels Start y End en fila */}
+    <Stack direction="row" spacing={2} justifyContent="center">
+      <TextField
+        label="Inicio"
+        type="datetime-local"
+        value={startDateInput}
+        onChange={(e) => setStartDateInput(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+        inputProps={{
+          min: threeMonthsAgo.toISOString().slice(0,16),
+          max: new Date().toISOString().slice(0,16),
+        }}
+        onKeyDown={(e) => e.preventDefault()}
+        sx={{ flex: 1 }}
+      />
+      <TextField
+        label="Fin"
+        type="datetime-local"
+        value={endDateInput}
+        onChange={(e) => setEndDateInput(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+        disabled={!startDateInput}
+        inputProps={{
+          min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
+          max: new Date().toISOString().slice(0,16),
+        }}
+        onKeyDown={(e) => e.preventDefault()}
+        sx={{ flex: 1 }}
+      />
+    </Stack>
 
-              <Button
-  variant="contained"
-  color="info"
-  startIcon={<FilterAltIcon />}
-  onClick={handleFilter}
->
-  Filtrar
-</Button>
+    {/* Botones debajo del Inicio */}
+    <Button fullWidth variant="contained" color="info" startIcon={<FilterAltIcon />} onClick={handleFilter}>
+      Filtrar
+    </Button>
+    <Button fullWidth variant="contained" color="success" startIcon={<ZoomInIcon />} onClick={handleZoomIn}>
+      Zoom In
+    </Button>
+    <Button fullWidth variant="contained" color="warning" startIcon={<ZoomOutIcon />} onClick={handleZoomOut}>
+      Zoom Out
+    </Button>
 
-              <Button
-  variant="contained"
-  color="success"
-  startIcon={<ZoomInIcon />}
-  onClick={handleZoomIn}
->
-  Zoom In
-</Button>
-              <Button
-  variant="contained"
-  color="warning"
-  startIcon={<ZoomOutIcon />}
-  onClick={handleZoomOut}
->
-  Zoom Out
-</Button>
-<Button
-  variant="contained"
-  color="primary"
-  startIcon={<FileDownloadIcon />}
-  onClick={exportCSV}
->
-  Exportar CSV
-</Button>
-                  <Button
-  variant="contained"
-  color="secondary"
-  startIcon={<PictureAsPdfIcon />}
-  onClick={exportPDF}
->
-  Exportar PDF
-</Button>
+    {/* Textos debajo del label FIN */}
+    <Box sx={{ textAlign: 'center' }}>
+      <Typography sx={{ fontWeight: 500, color: 'black' }}>
+        {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        })}
+      </Typography>
+      <Typography sx={{ fontWeight: 500, color: 'red' }}>
+        {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        })}
+      </Typography>
+      <Typography sx={{ mt: 1, fontWeight: 600 }}>
+        {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+        {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+        {String(diffSec % 60).padStart(2, '0')}
+      </Typography>
+    </Box>
+  </Stack>
+) : (
+  // 💻 PC 
+  <Stack
+    direction="row"
+    spacing={2}
+    alignItems="center"
+    justifyContent="center"
+    sx={{ mb: 2, flexWrap: 'wrap', textAlign: 'center', width: '100%' }}
+  >
+    <TextField
+      label="Inicio"
+      type="datetime-local"
+      value={startDateInput}
+      onChange={(e) => setStartDateInput(e.target.value)}
+      InputLabelProps={{ shrink: true }}
+      inputProps={{
+        min: threeMonthsAgo.toISOString().slice(0,16),
+        max: new Date().toISOString().slice(0,16),
+      }}
+      onKeyDown={(e) => e.preventDefault()}
+    />
+    <TextField
+      label="Fin"
+      type="datetime-local"
+      value={endDateInput}
+      onChange={(e) => setEndDateInput(e.target.value)}
+      InputLabelProps={{ shrink: true }}
+      disabled={!startDateInput}
+      inputProps={{
+        min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
+        max: new Date().toISOString().slice(0,16),
+      }}
+      onKeyDown={(e) => e.preventDefault()}
+    />
+    <Button variant="contained" color="info" startIcon={<FilterAltIcon />} onClick={handleFilter}>Filtrar</Button>
+    <Button variant="contained" color="success" startIcon={<ZoomInIcon />} onClick={handleZoomIn}>Zoom In</Button>
+    <Button variant="contained" color="warning" startIcon={<ZoomOutIcon />} onClick={handleZoomOut}>Zoom Out</Button>
+    <Button variant="contained" color="primary" startIcon={<FileDownloadIcon />} onClick={exportCSV}>Exportar CSV</Button>
+    <Button variant="contained" color="secondary" startIcon={<PictureAsPdfIcon />} onClick={exportPDF}>Exportar PDF</Button>
 
-
-
-              <Box sx={{ ml: 3 }}>
-                <Typography sx={{ fontWeight: 500, color: 'black' }}>
-                  {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </Typography>
-                <Typography sx={{ fontWeight: 500, color: 'red' }}>
-                  {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </Typography>
-                <Typography sx={{ mt: 1, fontWeight: 600 }}>
-                  {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
-                  {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
-                  {String(diffSec % 60).padStart(2, '0')}
-                </Typography>
-              </Box>
-            </Stack>
+    <Box sx={{ ml: 3 }}>
+      <Typography sx={{ fontWeight: 500, color: 'black' }}>
+        {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        })}
+      </Typography>
+      <Typography sx={{ fontWeight: 500, color: 'red' }}>
+        {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+        })}
+      </Typography>
+      <Typography sx={{ mt: 1, fontWeight: 600 }}>
+        {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+        {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+        {String(diffSec % 60).padStart(2, '0')}
+      </Typography>
+    </Box>
+  </Stack>
+)}
 
             <Box ref={chartRef} sx={{ width: '100%' }}>
               {tooManyEvents ? (
@@ -616,6 +642,28 @@ const exportCSV = () => {
                 </svg>
               )}
             </Box>
+
+            {isMobile && (
+  <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+    <Button
+      variant="contained"
+      color="primary"
+      startIcon={<FileDownloadIcon />}
+      onClick={exportCSV}
+    >
+      Exportar CSV
+    </Button>
+    <Button
+      variant="contained"
+      color="secondary"
+      startIcon={<PictureAsPdfIcon />}
+      onClick={exportPDF}
+    >
+      Exportar PDF
+    </Button>
+  </Stack>
+)}
+
             {/* Tabla de eventos debajo de la gráfica */}
 <TableContainer component={Paper} sx={{ mt: 3, maxHeight: 300 }}>
   <Table stickyHeader size="small">
