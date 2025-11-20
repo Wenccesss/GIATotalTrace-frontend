@@ -446,6 +446,24 @@ const exportCSV = () => {
 >
   Zoom Out
 </Button>
+<Button
+  variant="contained"
+  color="primary"
+  startIcon={<FileDownloadIcon />}
+  onClick={exportCSV}
+>
+  Exportar CSV
+</Button>
+                  <Button
+  variant="contained"
+  color="secondary"
+  startIcon={<PictureAsPdfIcon />}
+  onClick={exportPDF}
+>
+  Exportar PDF
+</Button>
+
+
 
               <Box sx={{ ml: 3 }}>
                 <Typography sx={{ fontWeight: 500, color: 'black' }}>
@@ -467,25 +485,6 @@ const exportCSV = () => {
                   {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
                   {String(diffSec % 60).padStart(2, '0')}
                 </Typography>
-
-                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                  <Button
-  variant="contained"
-  color="primary"
-  startIcon={<FileDownloadIcon />}
-  onClick={exportCSV}
->
-  Exportar CSV
-</Button>
-                  <Button
-  variant="contained"
-  color="secondary"
-  startIcon={<PictureAsPdfIcon />}
-  onClick={exportPDF}
->
-  Exportar PDF
-</Button>
-                </Stack>
               </Box>
             </Stack>
 
