@@ -290,20 +290,28 @@ export default function MachineView({ machineId }: { machineId: string }) {
   // límite de 3 meses atrás
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-  // Exportar CSV
-  const exportCSV = () => {
-    if (!events.length) return;
-    const header = "estado,hora\n";
-    const rows = events.map(ev => `${ev.estado},${ev.hora}`).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `trazabilidad_${machineId}_${new Date().toISOString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // Exportar CSV sin ID y con formato fecha/hora personalizado
+const exportCSV = () => {
+  if (!events.length) return;
+  const header = "estado,hora\n";
+  const rows = events.map(ev => {
+    const d = new Date(ev.hora);
+    // Formato: YYYY-MM-DD/HH:mm:ss.SSSZ
+    const fecha = d.toISOString()
+      .replace('T', '/')        // sustituye la T por /
+      .replace(/\.\d{3}/, '');  // opcional: quitar milisegundos si no los quieres
+    return `${ev.estado},${fecha}`;
+  }).join("\n");
+
+  const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `trazabilidad_${machineId}_${new Date().toISOString()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   // Exportar PDF
   const exportPDF = async () => {
