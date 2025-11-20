@@ -70,8 +70,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
       const normalized: Event[] = arr.map((e: any) => ({
   id: String(e.id ?? ''),
   estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-  hora: new Date(e.hora).getTime(), // 👈 número en ms
-}));
+  // ✅ convertir a hora local de España
+  hora: new Date(e.hora).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+}))
         .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
       setEvents(normalized);
     } catch (err) {
@@ -225,7 +226,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
     }
 
     for (const ev of sorted) {
-      const t = ev.hora; // ya es número
+      const t = new Date(ev.hora).getTime();
       if (t >= zoomStart && t <= zoomEnd) {
         series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
       }
