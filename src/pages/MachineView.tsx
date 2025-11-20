@@ -389,7 +389,7 @@ const exportCSV = () => {
 
             {isMobile ? (
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-    {/* Bloque 1: TextFields Inicio y Fin en fila */}
+    {/* Inicio y Fin en fila */}
     <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
       <TextField
         label="Inicio"
@@ -421,8 +421,8 @@ const exportCSV = () => {
       />
     </Stack>
 
-    {/* Bloque 2: Textos de estado y diferencia debajo del END */}
-    <Box sx={{ mt: 2 }}>
+    {/* Textos debajo de Fin */}
+    <Box sx={{ mt: 1 }}>
       <Typography sx={{ fontWeight: 500, color: 'black' }}>
         {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleTimeString('es-ES')}
       </Typography>
@@ -436,8 +436,8 @@ const exportCSV = () => {
       </Typography>
     </Box>
 
-    {/* Bloque 3: Botones Filtrar + Zoom */}
-    <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+    {/* Botones en columna */}
+    <Stack direction="column" spacing={2} sx={{ mt: 2, width: '100%' }}>
       <Button
         variant="contained"
         color="info"
