@@ -294,7 +294,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const exportCSV = () => {
     if (!events.length) return;
     const header = "estado,hora\n";
-    const rows = events.map(ev => `${ev.id},${ev.estado},${ev.hora}`).join("\n");
+    const rows = events.map(ev => `${ev.estado},${ev.hora}`).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
