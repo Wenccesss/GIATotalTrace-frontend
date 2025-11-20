@@ -95,6 +95,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const [openDialog, setOpenDialog] = useState(false);
   const [openTooManyDialog, setOpenTooManyDialog] = useState(false);
   const [openNoEventsDialog, setOpenNoEventsDialog] = useState(false);
+  const [openNoZoomDialog, setOpenNoZoomDialog] = useState(false);
 
   const handleFilter = () => {
     if (!startDateInput || !endDateInput) {
@@ -153,12 +154,20 @@ export default function MachineView({ machineId }: { machineId: string }) {
   }, [startTimestamp, endTimestamp]);
 
   const handleZoomIn = () => {
+    if (!events.length) {
+    setOpenNoZoomDialog(true); // abre el diálogo si no hay eventos
+    return;
+  }
     if (selectedX1 && selectedX2) {
       setCurrentRange([selectedX1, selectedX2]);
     }
   };
 
   const handleZoomOut = () => {
+    if (!events.length) {
+    setOpenNoZoomDialog(true); // abre el diálogo si no hay eventos
+    return;
+  }
     setCurrentRange([startTimestamp, endTimestamp]);
   };
 
