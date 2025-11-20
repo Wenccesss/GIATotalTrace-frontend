@@ -222,6 +222,24 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const clamp = (ms: number) =>
     currentRange ? Math.max(currentRange[0], Math.min(currentRange[1], ms)) : ms;
+
+  const handleTouchStart = (line: 'x1' | 'x2') => {
+  setDragging(line);
+};
+
+const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+  e.preventDefault(); // 🔧 evita scroll durante el arrastre
+  if (!dragging || !currentRange) return;
+  const touch = e.touches[0];
+  if (!touch) return;
+  const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+  const x = touch.clientX - rect.left;
+  const ms = clamp(xScale.invert(x).getTime());
+  if (dragging === 'x1') setSelectedX1(ms);
+  else if (dragging === 'x2') setSelectedX2(ms);
+};
+
+const handleTouchEnd = () => setDragging(null);
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (!dragging || !currentRange) return;
@@ -402,9 +420,11 @@ export default function MachineView({ machineId }: { machineId: string }) {
               <svg
                 width={width}
                 height={height}
-                style={{ background: '#fff' }}
+                style={{ background: '#fff', touchAction: 'none' }}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
+                onTouchMove={handleTouchMove}   // 👈 soporte móvil
+                onTouchEnd={handleTouchEnd}     // 👈 soporte móvil
               >
                 <Group>
                   {/* 🔧 Eje inferior con ticks adaptativos */}
@@ -444,6 +464,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                     strokeWidth={2}
                     cursor="ew-resize"
                     onMouseDown={() => setDragging('x1')}
+                    onTouchStart={() => handleTouchStart('x1')} // 👈 soporte móvil
                   />
                   <line
                     x1={xScale(new Date(safeX2))}
@@ -454,6 +475,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                     strokeWidth={2}
                     cursor="ew-resize"
                     onMouseDown={() => setDragging('x2')}
+                    onTouchStart={() => handleTouchStart('x2')} // 👈 soporte móvil
                   />
                 </Group>
 
