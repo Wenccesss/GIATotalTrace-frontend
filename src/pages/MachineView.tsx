@@ -542,6 +542,7 @@ const exportCSV = () => {
                       y2={height - margin.bottom + 10}
                       stroke="black"
                       strokeWidth={2}
+                      strokeDasharray="6,2" // ← hace la línea discontinua
                       cursor="ew-resize"
                       onMouseDown={() => setDragging('x1')}
                       onTouchStart={() => handleTouchStart('x1')}
@@ -564,6 +565,7 @@ const exportCSV = () => {
                       y2={height - margin.bottom + 10}
                       stroke="red"
                       strokeWidth={2}
+                      strokeDasharray="6,2" // ← hace la línea discontinua
                       cursor="ew-resize"
                       onMouseDown={() => setDragging('x2')}
                       onTouchStart={() => handleTouchStart('x2')}
