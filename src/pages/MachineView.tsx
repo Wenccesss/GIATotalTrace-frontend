@@ -635,6 +635,17 @@ const exportCSV = () => {
     <Button onClick={() => setOpenNoEventsDialog(false)}>Aceptar</Button>
   </DialogActions>
 </Dialog>
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+  <DialogTitle>Intervalos no definidos</DialogTitle>
+  <DialogContent>
+    <Typography>
+      Selecciona intervalos de tiempo antes de aplicar el filtro.
+    </Typography>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
+  </DialogActions>
+</Dialog>
 
             <Dialog open={openTooManyDialog} onClose={() => setOpenTooManyDialog(false)}>
   <DialogTitle>Eventos no mostrados</DialogTitle>
