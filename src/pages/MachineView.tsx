@@ -281,6 +281,22 @@ export default function MachineView({ machineId }: { machineId: string }) {
     pdf.save(`trazabilidad_${machineId}_${new Date().toISOString()}.pdf`);
   };
 
+  // 🔧 Generar ticks adaptativos
+  const tickValues = useMemo(() => {
+    const ticks: Date[] = [];
+    const start = new Date(currentRange?.[0] ?? Date.now());
+    const end = new Date(currentRange?.[1] ?? Date.now());
+
+    // Ajuste adaptativo según ancho
+    const desiredTicks = width < 600 ? 6 : width < 1024 ? 12 : 20;
+    const step = (end.getTime() - start.getTime()) / desiredTicks;
+
+    for (let t = start.getTime(); t <= end.getTime(); t += step) {
+      ticks.push(new Date(t));
+    }
+    return ticks;
+  }, [currentRange, width]);
+
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth="lg">
@@ -389,17 +405,19 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 onMouseUp={handleMouseUp}
               >
                 <Group>
+                  {/* 🔧 Eje inferior con ticks adaptativos */}
                   <AxisBottom
                     top={height - margin.bottom}
                     scale={xScale}
-                    numTicks={width < 600 ? 8 : width < 1024 ? 6 : 20} // 🔧 adaptativo
+                    tickValues={tickValues}
                     tickFormat={(d) =>
-                    new Date(d as Date).toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-             }
-                />
+                      new Date(d as Date).toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    }
+                  />
+
                   <AxisLeft
                     left={margin.left}
                     scale={yScale}
@@ -415,7 +433,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
                     strokeWidth={2}
                     curve={curveStepAfter}
                   />
-
                   <line
                     x1={xScale(new Date(safeX1))}
                     x2={xScale(new Date(safeX1))}
@@ -453,37 +470,37 @@ export default function MachineView({ machineId }: { machineId: string }) {
                       x: point.x,
                       y: point.y,
                       fecha: msDate.toLocaleString('es-ES', {
-                      hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        }),
-                        estado: estado ?? 'Sin estado',
-                      });
-                    }}
-                    onMouseLeave={() => setHover(null)}
-                  />
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      }),
+                      estado: estado ?? 'Sin estado',
+                    });
+                  }}
+                  onMouseLeave={() => setHover(null)}
+                />
 
-                  {hover && (
-                    <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
-                      {hover.estado} | {hover.fecha}
-                    </text>
-                  )}
-                </svg>
-              </Box>
+                {hover && (
+                  <text x={hover.x + 10} y={hover.y - 10} fontSize={12} fill="black">
+                    {hover.estado} | {hover.fecha}
+                  </text>
+                )}
+              </svg>
+            </Box>
 
-              {/* Dialog de validación */}
-              <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-                <DialogTitle>Atención</DialogTitle>
-                <DialogContent>
-                  Debes seleccionar un rango de fechas antes de filtrar.
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
-                </DialogActions>
-              </Dialog>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
+            {/* Dialog de validación */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+              <DialogTitle>Atención</DialogTitle>
+              <DialogContent>
+                Debes seleccionar un rango de fechas antes de filtrar.
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
+              </DialogActions>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 }
