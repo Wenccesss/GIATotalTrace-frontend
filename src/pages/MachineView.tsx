@@ -511,7 +511,7 @@ const exportCSV = () => {
                       scale={xScale}
                       tickValues={tickValues}
                       tickFormat={(d) =>
-                        new Date(d as Date).toLocaleTimeString('es-ES', {
+                        new Date((d as number) - (60 * 60 * 1000)).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })
@@ -595,7 +595,7 @@ const exportCSV = () => {
                       setHover({
                         x: point.x,
                         y: point.y,
-                        fecha: msDate.toLocaleString('es-ES', {
+                        fecha: new Date(msDate.getTime() - (60 * 60 * 1000)).toLocaleString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
@@ -646,7 +646,7 @@ const exportCSV = () => {
                 {ev.estado}
               </TableCell>
               <TableCell>
-                {new Date(ev.hora).toLocaleString('es-ES', {
+                {new Date(new Date(ev.hora).getTime() - (60 * 60 * 1000)).toLocaleString('es-ES', {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
