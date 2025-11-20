@@ -431,10 +431,10 @@ const exportCSV = () => {
 </Button>
 
               <Button
-  variant="outlined"
-  onClick={handleZoomIn}
-  sx={{ ml: 2 }}
+  variant="contained"
+  color="success"
   startIcon={<ZoomInIcon />}
+  onClick={handleZoomIn}
 >
   Zoom In
 </Button>
