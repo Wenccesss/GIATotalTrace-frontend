@@ -541,7 +541,7 @@ const exportCSV = () => {
                       y1={margin.top}
                       y2={height - margin.bottom + 10}
                       stroke="black"
-                      strokeWidth={2}
+                      strokeWidth={1}
                       strokeDasharray="6,2" // ← hace la línea discontinua
                       cursor="ew-resize"
                       onMouseDown={() => setDragging('x1')}
@@ -564,7 +564,7 @@ const exportCSV = () => {
                       y1={margin.top}
                       y2={height - margin.bottom + 10}
                       stroke="red"
-                      strokeWidth={2}
+                      strokeWidth={1}
                       strokeDasharray="6,2" // ← hace la línea discontinua
                       cursor="ew-resize"
                       onMouseDown={() => setDragging('x2')}
