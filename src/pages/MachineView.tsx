@@ -247,9 +247,8 @@ const endTimestamp = useMemo(() => {
   const tooManyEvents = useMemo(() => {
     if (!currentRange || events.length === 0 || width === 0) return false;
     const filtered = events.filter(ev => {
-      const t = new Date(ev.hora).getTime();
-      return t >= currentRange[0] && t <= currentRange[1];
-    });
+  return ev.horaMs >= currentRange[0] && ev.horaMs <= currentRange[1];
+});
     const maxEvents = Math.floor((width - margin.left - margin.right) / PIXELS_PER_EVENT);
     const exceeds = filtered.length > maxEvents;
     if (exceeds) setOpenTooManyDialog(true);
@@ -316,10 +315,7 @@ const exportCSV = () => {
   const rows = events.map(ev => {
     const d = new Date(ev.horaMs);
     // Formato: YYYY-MM-DD/HH:mm:ss.SSS
-    const fecha = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
-      .replace('T', '/')        // sustituye la T por /
-      .slice(0, -1)            // elimina la Z final
-      .replace(/\.\d{3}/, '');  // opcional: quitar milisegundos si no los quieres
+    const fecha = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });     
     return `${ev.estado},${fecha}`;
   }).join("\n");
 
@@ -712,7 +708,7 @@ const exportCSV = () => {
                 {ev.estado}
               </TableCell>
               <TableCell>
-                {new Date(ev.hora).toLocaleString('es-ES', {
+                {new Date(ev.horaMs).toLocaleString('es-ES', {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
