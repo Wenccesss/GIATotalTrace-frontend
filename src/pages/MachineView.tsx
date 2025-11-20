@@ -283,19 +283,21 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   // 🔧 Generar ticks adaptativos
   const tickValues = useMemo(() => {
-    const ticks: Date[] = [];
-    const start = new Date(currentRange?.[0] ?? Date.now());
-    const end = new Date(currentRange?.[1] ?? Date.now());
+  const ticks: Date[] = [];
+  const start = new Date(currentRange?.[0] ?? Date.now());
+  const end = new Date(currentRange?.[1] ?? Date.now());
 
-    // Ajuste adaptativo según ancho
-    const desiredTicks = width < 600 ? 6 : width < 1024 ? 12 : 20;
-    const step = (end.getTime() - start.getTime()) / desiredTicks;
+  const desiredTicks = width < 600 ? 6 : width < 1024 ? 12 : 20;
+  const diff = end.getTime() - start.getTime();
+  if (diff <= 0) return ticks; // 🔧 evita step=0 o negativo
 
-    for (let t = start.getTime(); t <= end.getTime(); t += step) {
-      ticks.push(new Date(t));
-    }
-    return ticks;
-  }, [currentRange, width]);
+  const step = diff / desiredTicks;
+
+  for (let t = start.getTime(); t <= end.getTime(); t += step) {
+    ticks.push(new Date(t));
+  }
+  return ticks;
+}, [currentRange, width]);
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
