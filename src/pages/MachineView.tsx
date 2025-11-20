@@ -392,7 +392,7 @@ const exportCSV = () => {
 
 {isMobile ? (
   // 📱 MOBILE
-  <Stack direction="row" spacing={2} justifyContent="space-between" sx={{ mb: 2, width: '100%' }}>
+  <Stack direction="row" spacing={2} justifyContent="space-between" sx={{ mb: 2, width: '100%', alignItems: 'stretch' }}>
     {/* Columna izquierda: Inicio + botones */}
     <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
       <TextField
@@ -419,7 +419,7 @@ const exportCSV = () => {
       </Button>
     </Stack>
 
-    {/* Columna derecha: Fin + textos en rectángulo */}
+    {/* Columna derecha: Fin + rectángulo gris con textos */}
     <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
       <TextField
         label="Fin"
@@ -435,18 +435,31 @@ const exportCSV = () => {
         onKeyDown={(e) => e.preventDefault()}
         sx={{ width: '100%' }}
       />
-      <Paper elevation={2} sx={{ mt: 1, p: 2, backgroundColor: '#f5f5f5', borderRadius: 2, width: '100%' }}>
-        <Typography sx={{ fontWeight: 500, color: 'black' }}>
+      <Paper
+        elevation={2}
+        sx={{
+          mt: 1,
+          p: 2,
+          backgroundColor: '#f5f5f5',
+          borderRadius: 2,
+          width: '100%',
+          height: '100%', // ocupa la misma altura que la columna izquierda
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between', // reparte los textos en vertical
+        }}
+      >
+        <Typography sx={{ fontWeight: 500, color: 'black', mb: 1.5 }}>
           {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
             hour: '2-digit', minute: '2-digit', second: '2-digit',
           })}
         </Typography>
-        <Typography sx={{ fontWeight: 500, color: 'red' }}>
+        <Typography sx={{ fontWeight: 500, color: 'red', mb: 1.5 }}>
           {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
             hour: '2-digit', minute: '2-digit', second: '2-digit',
           })}
         </Typography>
-        <Typography sx={{ mt: 1, fontWeight: 600 }}>
+        <Typography sx={{ fontWeight: 600 }}>
           {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
           {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
           {String(diffSec % 60).padStart(2, '0')}
