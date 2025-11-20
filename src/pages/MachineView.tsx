@@ -94,6 +94,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   // Dialogs
   const [openDialog, setOpenDialog] = useState(false);
   const [openTooManyDialog, setOpenTooManyDialog] = useState(false);
+  const [openNoEventsDialog, setOpenNoEventsDialog] = useState(false);
 
   const handleFilter = () => {
     if (!startDateInput || !endDateInput) {
@@ -292,7 +293,10 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   // Exportar CSV sin ID y con formato fecha/hora personalizado
 const exportCSV = () => {
-  if (!events.length) return;
+  if (!events.length) {
+    setOpenNoEventsDialog(true); // abre el diálogo si no hay eventos
+    return;
+  }
   const header = "Estado, Fecha y Hora\n";
   const rows = events.map(ev => {
     const d = new Date(ev.hora);
@@ -616,6 +620,18 @@ const exportCSV = () => {
   </Table>
 </TableContainer>
             {/* Dialogs */}
+            <Dialog open={openNoEventsDialog} onClose={() => setOpenNoEventsDialog(false)}>
+  <DialogTitle>Sin eventos</DialogTitle>
+  <DialogContent>
+    <Typography>
+      No hay eventos disponibles para exportar en este rango de fechas.
+    </Typography>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenNoEventsDialog(false)}>Aceptar</Button>
+  </DialogActions>
+</Dialog>
+
             <Dialog open={openTooManyDialog} onClose={() => setOpenTooManyDialog(false)}>
   <DialogTitle>Eventos no mostrados</DialogTitle>
   <DialogContent>
