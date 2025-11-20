@@ -285,7 +285,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  readOnly: true   // 🔒 evita escritura manual
+                  style: { pointerEvents: 'none' } // 🔒 bloquea escritura manual
                 }}
               />
 
@@ -299,7 +299,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 inputProps={{
                   min: startDateInput || threeMonthsAgo.toISOString().slice(0,16),
                   max: new Date().toISOString().slice(0,16),
-                  readOnly: true   // 🔒 evita escritura manual
+                  style: { pointerEvents: 'none' } // 🔒 bloquea escritura manual
                 }}
               />
 
