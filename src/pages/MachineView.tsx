@@ -389,79 +389,88 @@ const exportCSV = () => {
 
             {isMobile ? (
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-    {/* Inicio y Fin en fila */}
+    {/* Fila: Inicio y Fin */}
     <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
-      <TextField
-        label="Inicio"
-        type="datetime-local"
-        value={startDateInput}
-        onChange={(e) => setStartDateInput(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-        inputProps={{
-          min: threeMonthsAgo.toISOString().slice(0, 16),
-          max: new Date().toISOString().slice(0, 16),
-        }}
-        onKeyDown={(e) => e.preventDefault()}
-        sx={{ flex: 1 }}
-      />
+      {/* Inicio */}
+      <Box sx={{ flex: 1 }}>
+        <TextField
+          label="Inicio"
+          type="datetime-local"
+          value={startDateInput}
+          onChange={(e) => setStartDateInput(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{
+            min: threeMonthsAgo.toISOString().slice(0, 16),
+            max: new Date().toISOString().slice(0, 16),
+          }}
+          onKeyDown={(e) => e.preventDefault()}
+          fullWidth
+        />
 
-      <TextField
-        label="Fin"
-        type="datetime-local"
-        value={endDateInput}
-        onChange={(e) => setEndDateInput(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-        disabled={!startDateInput}
-        inputProps={{
-          min: startDateInput || threeMonthsAgo.toISOString().slice(0, 16),
-          max: new Date().toISOString().slice(0, 16),
-        }}
-        onKeyDown={(e) => e.preventDefault()}
-        sx={{ flex: 1 }}
-      />
-    </Stack>
+        {/* Botones debajo de Inicio, alineados a la izquierda */}
+        <Stack direction="column" spacing={1} sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="info"
+            startIcon={<FilterAltIcon />}
+            onClick={handleFilter}
+            fullWidth
+          >
+            Filtrar
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<ZoomInIcon />}
+            onClick={handleZoomIn}
+            fullWidth
+          >
+            Zoom In
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<ZoomOutIcon />}
+            onClick={handleZoomOut}
+            fullWidth
+          >
+            Zoom Out
+          </Button>
+        </Stack>
+      </Box>
 
-    {/* Textos debajo de Fin */}
-    <Box sx={{ mt: 1 }}>
-      <Typography sx={{ fontWeight: 500, color: 'black' }}>
-        {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleTimeString('es-ES')}
-      </Typography>
-      <Typography sx={{ fontWeight: 500, color: 'red', mt: 1 }}>
-        {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleTimeString('es-ES')}
-      </Typography>
-      <Typography sx={{ fontWeight: 600, mt: 1 }}>
-        {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
-        {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
-        {String(diffSec % 60).padStart(2, '0')}
-      </Typography>
-    </Box>
+      {/* Fin */}
+      <Box sx={{ flex: 1 }}>
+        <TextField
+          label="Fin"
+          type="datetime-local"
+          value={endDateInput}
+          onChange={(e) => setEndDateInput(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          disabled={!startDateInput}
+          inputProps={{
+            min: startDateInput || threeMonthsAgo.toISOString().slice(0, 16),
+            max: new Date().toISOString().slice(0, 16),
+          }}
+          onKeyDown={(e) => e.preventDefault()}
+          fullWidth
+        />
 
-    {/* Botones en columna */}
-    <Stack direction="column" spacing={2} sx={{ mt: 2, width: '100%' }}>
-      <Button
-        variant="contained"
-        color="info"
-        startIcon={<FilterAltIcon />}
-        onClick={handleFilter}
-      >
-        Filtrar
-      </Button>
-      <Button
-        variant="contained"
-        color="success"
-        startIcon={<ZoomInIcon />}
-        onClick={handleZoomIn}
-      >
-        Zoom In
-      </Button>
-      <Button
-        variant="contained"
-        color="warning"
-        startIcon={<ZoomOutIcon />}
-        onClick={handleZoomOut}
-      >
-        Zoom Out
-      </Button>
+        {/* Textos debajo de Fin */}
+        <Box sx={{ mt: 2 }}>
+          <Typography sx={{ fontWeight: 500, color: 'black' }}>
+            {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleTimeString('es-ES')}
+          </Typography>
+          <Typography sx={{ fontWeight: 500, color: 'red', mt: 1 }}>
+            {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleTimeString('es-ES')}
+          </Typography>
+          <Typography sx={{ fontWeight: 600, mt: 1 }}>
+            {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+            {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+            {String(diffSec % 60).padStart(2, '0')}
+          </Typography>
+        </Box>
+      </Box>
     </Stack>
   </Box>
 ) : (
