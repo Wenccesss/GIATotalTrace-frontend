@@ -67,12 +67,12 @@ export default function MachineView({ machineId }: { machineId: string }) {
       const res = await fetch(url);
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
-      const normalized: Event[] = arr
-        .map((e: any) => ({
-          id: String(e.id ?? ''),
-          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-          hora: String(e.hora),
-        }))
+      const normalized: Event[] = arr.map((e: any) => ({
+  id: String(e.id ?? ''),
+  estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+  // ✅ convertir a hora local de España
+  hora: new Date(e.hora).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+}));
         .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
       setEvents(normalized);
     } catch (err) {
