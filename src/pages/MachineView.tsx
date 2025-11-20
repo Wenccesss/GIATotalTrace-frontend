@@ -392,9 +392,9 @@ const exportCSV = () => {
 
 {isMobile ? (
   // 📱 MOBILE
-  <Stack spacing={2} sx={{ mb: 2, width: '100%' }}>
-    {/* Labels Start y End en fila */}
-    <Stack direction="row" spacing={2} justifyContent="center">
+  <Stack direction="row" spacing={2} justifyContent="space-between" sx={{ mb: 2, width: '100%' }}>
+    {/* Columna izquierda: Inicio + botones */}
+    <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
       <TextField
         label="Inicio"
         type="datetime-local"
@@ -406,8 +406,21 @@ const exportCSV = () => {
           max: new Date().toISOString().slice(0,16),
         }}
         onKeyDown={(e) => e.preventDefault()}
-        sx={{ flex: 1 }}
+        sx={{ width: '100%' }}
       />
+      <Button variant="contained" color="info" startIcon={<FilterAltIcon />} onClick={handleFilter} sx={{ width: '100%' }}>
+        Filtrar
+      </Button>
+      <Button variant="contained" color="success" startIcon={<ZoomInIcon />} onClick={handleZoomIn} sx={{ width: '100%' }}>
+        Zoom In
+      </Button>
+      <Button variant="contained" color="warning" startIcon={<ZoomOutIcon />} onClick={handleZoomOut} sx={{ width: '100%' }}>
+        Zoom Out
+      </Button>
+    </Stack>
+
+    {/* Columna derecha: Fin + textos en rectángulo */}
+    <Stack direction="column" alignItems="flex-start" spacing={1} sx={{ flex: 1 }}>
       <TextField
         label="Fin"
         type="datetime-local"
@@ -420,39 +433,26 @@ const exportCSV = () => {
           max: new Date().toISOString().slice(0,16),
         }}
         onKeyDown={(e) => e.preventDefault()}
-        sx={{ flex: 1 }}
+        sx={{ width: '100%' }}
       />
+      <Paper elevation={2} sx={{ mt: 1, p: 2, backgroundColor: '#f5f5f5', borderRadius: 2, width: '100%' }}>
+        <Typography sx={{ fontWeight: 500, color: 'black' }}>
+          {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+          })}
+        </Typography>
+        <Typography sx={{ fontWeight: 500, color: 'red' }}>
+          {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+          })}
+        </Typography>
+        <Typography sx={{ mt: 1, fontWeight: 600 }}>
+          {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
+          {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
+          {String(diffSec % 60).padStart(2, '0')}
+        </Typography>
+      </Paper>
     </Stack>
-
-    {/* Botones debajo del Inicio */}
-    <Button fullWidth variant="contained" color="info" startIcon={<FilterAltIcon />} onClick={handleFilter}>
-      Filtrar
-    </Button>
-    <Button fullWidth variant="contained" color="success" startIcon={<ZoomInIcon />} onClick={handleZoomIn}>
-      Zoom In
-    </Button>
-    <Button fullWidth variant="contained" color="warning" startIcon={<ZoomOutIcon />} onClick={handleZoomOut}>
-      Zoom Out
-    </Button>
-
-    {/* Textos debajo del label FIN */}
-    <Box sx={{ textAlign: 'center' }}>
-      <Typography sx={{ fontWeight: 500, color: 'black' }}>
-        {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        })}
-      </Typography>
-      <Typography sx={{ fontWeight: 500, color: 'red' }}>
-        {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        })}
-      </Typography>
-      <Typography sx={{ mt: 1, fontWeight: 600 }}>
-        {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
-        {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
-        {String(diffSec % 60).padStart(2, '0')}
-      </Typography>
-    </Box>
   </Stack>
 ) : (
   // 💻 PC 
