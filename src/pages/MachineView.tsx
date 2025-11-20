@@ -655,6 +655,17 @@ const exportCSV = () => {
     <Button onClick={() => setOpenDialog(false)}>Aceptar</Button>
   </DialogActions>
 </Dialog>
+<Dialog open={openNoZoomDialog} onClose={() => setOpenNoZoomDialog(false)}>
+  <DialogTitle>Sin eventos</DialogTitle>
+  <DialogContent>
+    <Typography>
+      No hay eventos para aplicar zoom en este rango de fechas.
+    </Typography>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenNoZoomDialog(false)}>Aceptar</Button>
+  </DialogActions>
+</Dialog>
 
             <Dialog open={openTooManyDialog} onClose={() => setOpenTooManyDialog(false)}>
   <DialogTitle>Eventos no mostrados</DialogTitle>
