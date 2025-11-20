@@ -27,6 +27,8 @@ import { ArrowBack } from '@mui/icons-material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { useLocation } from 'wouter';
 
 import { scaleTime, scaleLinear } from '@visx/scale';
@@ -428,12 +430,22 @@ const exportCSV = () => {
   Filtrar
 </Button>
 
-              <Button variant="outlined" onClick={handleZoomIn} sx={{ ml: 2 }}>
-                Zoom In
-              </Button>
-              <Button variant="outlined" onClick={handleZoomOut} sx={{ ml: 2 }}>
-                Zoom Out
-              </Button>
+              <Button
+  variant="outlined"
+  onClick={handleZoomIn}
+  sx={{ ml: 2 }}
+  startIcon={<ZoomInIcon />}
+>
+  Zoom In
+</Button>
+              <Button
+  variant="contained"
+  color="warning"
+  startIcon={<ZoomOutIcon />}
+  onClick={handleZoomOut}
+>
+  Zoom Out
+</Button>
 
               <Box sx={{ ml: 3 }}>
                 <Typography sx={{ fontWeight: 500, color: 'black' }}>
