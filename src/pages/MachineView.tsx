@@ -427,57 +427,83 @@ const handleTouchEnd = () => setDragging(null);
                 onTouchEnd={handleTouchEnd}     // 👈 soporte móvil
               >
                 <Group>
-                  {/* 🔧 Eje inferior con ticks adaptativos */}
-                  <AxisBottom
-                    top={height - margin.bottom}
-                    scale={xScale}
-                    tickValues={tickValues}
-                    tickFormat={(d) =>
-                      new Date(d as Date).toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    }
-                  />
+  {/* 🔧 Eje inferior con ticks adaptativos */}
+  <AxisBottom
+    top={height - margin.bottom}
+    scale={xScale}
+    tickValues={tickValues}
+    tickFormat={(d) =>
+      new Date(d as Date).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }
+  />
 
-                  <AxisLeft
-                    left={margin.left}
-                    scale={yScale}
-                    tickValues={[0, 1]}
-                    tickFormat={(v) => (v === 1 ? 'MARCHA' : v === 0 ? 'PARO' : '')}
-                  />
+  <AxisLeft
+    left={margin.left}
+    scale={yScale}
+    tickValues={[0, 1]}
+    tickFormat={(v) => (v === 1 ? 'MARCHA' : v === 0 ? 'PARO' : '')}
+  />
 
-                  <LinePath
-                    data={chartData}
-                    x={(d) => xScale(new Date(d.x))}
-                    y={(d) => yScale(d.y)}
-                    stroke="#667eea"
-                    strokeWidth={2}
-                    curve={curveStepAfter}
-                  />
-                  <line
-                    x1={xScale(new Date(safeX1))}
-                    x2={xScale(new Date(safeX1))}
-                    y1={margin.top}
-                    y2={height - margin.bottom + 10}
-                    stroke="black"
-                    strokeWidth={2}
-                    cursor="ew-resize"
-                    onMouseDown={() => setDragging('x1')}
-                    onTouchStart={() => handleTouchStart('x1')} // 👈 soporte móvil
-                  />
-                  <line
-                    x1={xScale(new Date(safeX2))}
-                    x2={xScale(new Date(safeX2))}
-                    y1={margin.top}
-                    y2={height - margin.bottom + 10}
-                    stroke="red"
-                    strokeWidth={2}
-                    cursor="ew-resize"
-                    onMouseDown={() => setDragging('x2')}
-                    onTouchStart={() => handleTouchStart('x2')} // 👈 soporte móvil
-                  />
-                </Group>
+  <LinePath
+    data={chartData}
+    x={(d) => xScale(new Date(d.x))}
+    y={(d) => yScale(d.y)}
+    stroke="#667eea"
+    strokeWidth={2}
+    curve={curveStepAfter}
+  />
+
+  {/* Línea negra */}
+  <line
+    x1={xScale(new Date(safeX1))}
+    x2={xScale(new Date(safeX1))}
+    y1={margin.top}
+    y2={height - margin.bottom + 10}
+    stroke="black"
+    strokeWidth={2}
+    cursor="ew-resize"
+    onMouseDown={() => setDragging('x1')}
+    onTouchStart={() => handleTouchStart('x1')}
+  />
+  {/* Área invisible para enganchar mejor la línea negra */}
+  <rect
+    x={xScale(new Date(safeX1)) - 10}
+    y={margin.top}
+    width={20}
+    height={height - margin.top - margin.bottom + 10}
+    fill="transparent"
+    cursor="ew-resize"
+    onMouseDown={() => setDragging('x1')}
+    onTouchStart={() => handleTouchStart('x1')}
+  />
+
+  {/* Línea roja */}
+  <line
+    x1={xScale(new Date(safeX2))}
+    x2={xScale(new Date(safeX2))}
+    y1={margin.top}
+    y2={height - margin.bottom + 10}
+    stroke="red"
+    strokeWidth={2}
+    cursor="ew-resize"
+    onMouseDown={() => setDragging('x2')}
+    onTouchStart={() => handleTouchStart('x2')}
+  />
+  {/* Área invisible para enganchar mejor la línea roja */}
+  <rect
+    x={xScale(new Date(safeX2)) - 10}
+    y={margin.top}
+    width={20}
+    height={height - margin.top - margin.bottom + 10}
+    fill="transparent"
+    cursor="ew-resize"
+    onMouseDown={() => setDragging('x2')}
+    onTouchStart={() => handleTouchStart('x2')}
+  />
+</Group>
 
                 <rect
                   x={margin.left}
