@@ -70,10 +70,9 @@ export default function MachineView({ machineId }: { machineId: string }) {
       const normalized: Event[] = arr.map((e: any) => ({
   id: String(e.id ?? ''),
   estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-  // ✅ convertir a hora local de España
-  hora: new Date(e.hora).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+  hora: new Date(e.hora), // 👈 objeto Date
 }))
-        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+.sort((a, b) => a.hora.getTime() - b.hora.getTime());
       setEvents(normalized);
     } catch (err) {
       console.error('Error fetching events', err);
@@ -213,33 +212,32 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   // Datos para el gráfico
   const chartData = useMemo(() => {
-    if (!currentRange || events.length === 0) return [];
-    const series: { x: number; y: number }[] = [];
-    const sorted = [...events];
+  if (!currentRange || events.length === 0) return [];
+  const series: { x: number; y: number }[] = [];
 
-    const zoomStart = currentRange[0];
-    const zoomEnd = currentRange[1];
+  const zoomStart = currentRange[0];
+  const zoomEnd = currentRange[1];
 
-    const initialState = stateAt(sorted, zoomStart);
-    if (initialState) {
-      series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
+  const initialState = stateAt(events, zoomStart);
+  if (initialState) {
+    series.push({ x: zoomStart, y: initialState === 'MARCHA' ? 1 : 0 });
+  }
+
+  for (const ev of events) {
+    const t = ev.hora.getTime();
+    if (t >= zoomStart && t <= zoomEnd) {
+      series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
     }
+  }
 
-    for (const ev of sorted) {
-      const t = new Date(ev.hora).getTime();
-      if (t >= zoomStart && t <= zoomEnd) {
-        series.push({ x: t, y: ev.estado === 'MARCHA' ? 1 : 0 });
-      }
-    }
+  const finalState = stateAt(events, zoomEnd);
+  if (finalState) {
+    series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
+  }
 
-    const finalState = stateAt(sorted, zoomEnd);
-    if (finalState) {
-      series.push({ x: zoomEnd, y: finalState === 'MARCHA' ? 1 : 0 });
-    }
-
-    series.sort((a, b) => a.x - b.x);
-    return series;
-  }, [events, currentRange]);
+  series.sort((a, b) => a.x - b.x);
+  return series;
+}, [events, currentRange]);
 
   // Límite dinámico de eventos (12 px por evento)
   const PIXELS_PER_EVENT = 12;
