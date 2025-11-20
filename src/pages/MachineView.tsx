@@ -293,7 +293,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
   // Exportar CSV sin ID y con formato fecha/hora personalizado
 const exportCSV = () => {
   if (!events.length) return;
-  const header = "estado,hora\n";
+  const header = "Estado, Fecha y Hora\n";
   const rows = events.map(ev => {
     const d = new Date(ev.hora);
     // Formato: YYYY-MM-DD/HH:mm:ss.SSSZ
