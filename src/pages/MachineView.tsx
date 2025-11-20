@@ -389,7 +389,17 @@ export default function MachineView({ machineId }: { machineId: string }) {
                 onMouseUp={handleMouseUp}
               >
                 <Group>
-                  <AxisBottom top={height - margin.bottom} scale={xScale} />
+                  <AxisBottom
+                    top={height - margin.bottom}
+                    scale={xScale}
+                    numTicks={width < 600 ? 8 : width < 1024 ? 6 : 20} // 🔧 adaptativo
+                    tickFormat={(d) =>
+                    new Date(d as Date).toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+             }
+                />
                   <AxisLeft
                     left={margin.left}
                     scale={yScale}
