@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Container,
@@ -17,9 +17,10 @@ import {
   TextField,
   Button,
 } from '@mui/material';
-import { Factory, Logout, ExpandMore } from '@mui/icons-material';
+import { Factory, Logout, ExpandMore, ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import EmblaCarouselReact from 'embla-carousel-react';
 import dashboardImage from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
 
 interface DashboardProps {
@@ -30,6 +31,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [, setLocation] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
+  const emblaRef = useRef<EmblaCarouselReact>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -46,9 +48,11 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   };
 
   const handleAskAI = () => {
-    // En el futuro: enviar la pregunta al backend/IA
     console.log(`Pregunta a la IA: ${question}`);
   };
+
+  const scrollPrev = () => emblaRef.current?.scrollPrev();
+  const scrollNext = () => emblaRef.current?.scrollNext();
 
   const machines = [
     {
@@ -57,6 +61,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       description: 'Centro de Mecanizado CNC',
       imageUrl: dashboardImage,
     },
+    {
+      id: '2',
+      name: 'Máquina 2',
+      description: 'Torno CNC de alta precisión',
+      imageUrl: dashboardImage,
+    },
+    // Puedes agregar más máquinas aquí
   ];
 
   return (
@@ -108,48 +119,48 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             Sistema de Trazabilidad Industrial
           </Typography>
 
-          {/* Tarjetas de máquinas */}
-          <Grid container spacing={4} justifyContent="center">
-            {machines.map((machine) => (
-              <Grid item xs={12} sm={6} md={4} key={machine.id}>
-                <Card
-                  elevation={4}
-                  data-testid={`card-machine-${machine.id}`}
-                  sx={{
-                    borderRadius: 2,
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 12px 24px rgba(43, 108, 176, 0.2)',
-                    },
-                  }}
-                >
-                  <CardActionArea onClick={() => setLocation(`/machine/${machine.id}`)} data-testid={`button-machine-${machine.id}`}>
-                    <CardMedia
-                      component="img"
-                      height="120" // más pequeña
-                      image={machine.imageUrl}
-                      alt={machine.name}
-                      sx={{
-    height: 150,          // altura ajustable
-    width: '100%',        // ocupa todo el ancho disponible
-    objectFit: 'contain', // mantiene proporciones
-    padding: 1,           // margen interno
-    backgroundColor: '#f7fafc',
-  }}
-                    />
-                    <CardContent sx={{ padding: 3 }}>
-                      <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: '#2d3748', marginBottom: 1 }}>
-                        {machine.name}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#718096' }}>
-                        {machine.description}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
+          {/* Carrusel de máquinas */}
+          <Grid container justifyContent="center" alignItems="center" sx={{ marginBottom: 6 }}>
+            <IconButton onClick={scrollPrev} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+              <ArrowBackIos />
+            </IconButton>
+
+            <Box sx={{ overflow: 'hidden', width: { xs: '90%', md: '600px' } }}>
+              <EmblaCarouselReact ref={emblaRef} options={{ loop: false, draggable: true }}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {machines.map((machine) => (
+                    <Card key={machine.id} sx={{ minWidth: 300 }}>
+                      <CardActionArea onClick={() => setLocation(`/machine/${machine.id}`)}>
+                        <CardMedia
+                          component="img"
+                          image={machine.imageUrl}
+                          alt={machine.name}
+                          sx={{
+                            height: 150,
+                            width: '100%',
+                            objectFit: 'contain',
+                            padding: 1,
+                            backgroundColor: '#f7fafc',
+                          }}
+                        />
+                        <CardContent>
+                          <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748', marginBottom: 1 }}>
+                            {machine.name}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: '#718096' }}>
+                            {machine.description}
+                          </Typography>
+                        </CardContent>
+                      </CardActionArea>
+                    </Card>
+                  ))}
+                </Box>
+              </EmblaCarouselReact>
+            </Box>
+
+            <IconButton onClick={scrollNext} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+              <ArrowForwardIos />
+            </IconButton>
           </Grid>
 
           <Box sx={{ marginTop: 8 }}>
