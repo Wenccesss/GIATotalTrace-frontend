@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -30,7 +30,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [question, setQuestion] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expanded, setExpanded] = useState<boolean>(false);
-
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const machines = [
@@ -102,7 +101,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   };
 
   const handleAccordionChange = (_: React.SyntheticEvent, isExpanded: boolean) => {
-    // Al hacer clic para expandir / colapsar
     setExpanded(isExpanded);
   };
 
@@ -181,17 +179,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </IconButton>
 
         <Card
-  elevation={4}
-  sx={{
-    width: { xs: '90%', md: '60%' },
-    maxHeight: '80vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  }}
->
+          elevation={4}
+          sx={{
+            width: { xs: '90%', md: '60%' },
+            maxHeight: '80vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <CardActionArea
             onClick={() => handleMachineClick(machines[currentIndex])}
             sx={{
@@ -202,6 +200,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               alignItems: 'center',
               position: 'relative',
               flexDirection: 'column',
+              paddingBottom: '80px', // reserva espacio para el texto
             }}
           >
             <CardMedia
@@ -210,8 +209,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               alt={machines[currentIndex].name}
               sx={{
                 objectFit: 'contain',
-                maxHeight: '100%',
-                maxWidth: '100%',
+                width: '100%',
+                height: 'auto',
+                maxHeight: { xs: '50vh', md: '60vh' }, // limita altura para que no pise el texto
                 display: 'block',
               }}
             />
@@ -220,12 +220,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 position: 'absolute',
                 bottom: 0,
                 width: '100%',
-                backgroundColor: 'rgba(0,0,0,0.5)',
+                backgroundColor: 'rgba(0,0,0,0.6)',
                 color: 'white',
-                padding: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
+                paddingY: 1.5,
+                paddingX: 2,
                 textAlign: 'center',
               }}
             >
@@ -238,7 +236,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Card>
       </Box>
 
-      {/* Sección IA que puede expandirse hacia abajo */}
+      {/* Sección IA */}
       <Box sx={{ paddingX: 2, paddingBottom: 2 }}>
         <Accordion expanded={expanded} onChange={handleAccordionChange}>
           <AccordionSummary expandIcon={<ExpandMore />}>
