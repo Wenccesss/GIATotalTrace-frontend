@@ -106,9 +106,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
   const updateCarouselHeight = () => {
     const headerHeight = headerRef.current?.offsetHeight || 0;
-    const iaHeight = iaRef.current?.offsetHeight || 200; // altura aproximada IA si aún no renderizada
+    const iaHeight = iaRef.current?.offsetHeight || 200; // fallback
     const vh = window.innerHeight;
-    setCarouselHeight(vh - headerHeight - iaHeight - 16); // 16 px margen
+    setCarouselHeight(vh - headerHeight - iaHeight - 16); // 16px margen
   };
 
   useEffect(() => {
@@ -118,9 +118,20 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   }, []);
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)',
+      }}
+    >
       {/* Barra superior */}
-      <Paper ref={headerRef} elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
+      <Paper
+        ref={headerRef}
+        elevation={2}
+        sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}
+      >
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -148,8 +159,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         sx={{
           height: `${carouselHeight}px`,
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
+          alignItems: 'center',
           position: 'relative',
           paddingX: 2,
         }}
@@ -190,28 +201,34 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             width: { xs: '90%', md: '60%' },
             height: '100%',
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center', // centra verticalmente la imagen
+            justifyContent: 'center',
+            alignItems: 'center',
             position: 'relative',
           }}
         >
           <CardActionArea
             onClick={() => handleMachineClick(machines[currentIndex])}
-            sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+            sx={{
+              height: '100%',
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'relative',
+              flexDirection: 'column',
+            }}
           >
             <CardMedia
               component="img"
               image={machines[currentIndex].imageUrl}
               alt={machines[currentIndex].name}
               sx={{
-                objectFit: 'contain', // se ve la imagen entera
-                width: '100%',
-                height: '100%',
+                objectFit: 'contain',
+                maxHeight: '100%',
+                maxWidth: '100%',
                 display: 'block',
-                flex: 1,
               }}
             />
-            {/* Texto centrado dentro de la imagen */}
             <Box
               sx={{
                 position: 'absolute',
@@ -236,7 +253,15 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       </Box>
 
       {/* Sección IA */}
-      <Box ref={iaRef} sx={{ marginBottom: 2 }}>
+      <Box
+        ref={iaRef}
+        sx={{
+          paddingX: 2,
+          paddingBottom: 2,
+          backgroundColor: 'transparent',
+          flexShrink: 0,
+        }}
+      >
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
