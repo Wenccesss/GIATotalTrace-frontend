@@ -296,6 +296,15 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const safeX1 = selectedX1 ?? (currentRange ? currentRange[0] : startTimestamp);
   const safeX2 = selectedX2 ?? (currentRange ? currentRange[1] : endTimestamp);
+  const diffMs = Math.abs(safeX2 - safeX1);
+  const diffSec = Math.floor(diffMs / 1000);
+
+  const days = Math.floor(diffSec / 86400); // días
+  const hours = Math.floor((diffSec % 86400) / 3600);
+  const minutes = Math.floor((diffSec % 3600) / 60);
+  const seconds = diffSec % 60;
+
+
 
   const estadoX1 = stateAt(events, safeX1);
   const estadoX2 = stateAt(events, safeX2);
@@ -367,14 +376,6 @@ const exportCSV = () => {
     }
     return ticks;
   }, [currentRange, width]);
-
-  const diffMs = Math.abs(safeX2 - safeX1);
-const diffSec = Math.floor(diffMs / 1000);
-
-  const days = Math.floor(diffSec / 86400); // días
-  const hours = Math.floor((diffSec % 86400) / 3600);
-  const minutes = Math.floor((diffSec % 3600) / 60);
-  const seconds = diffSec % 60;
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
       <Container maxWidth={false} disableGutters sx={{ px: 0 }}>
@@ -488,16 +489,16 @@ const diffSec = Math.floor(diffMs / 1000);
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-  <Typography sx={{ fontWeight: 600, fontSize: '0.70rem', my: 0.5 }}>
-    Diferencia
-  </Typography>
-  <Typography sx={{ fontSize: '0.70rem', my: 0.5 }}>
-    {days > 0 ? `${days} día${days > 1 ? 's' : ''} ` : ''}
-    {String(hours).padStart(2, '0')}:
-    {String(minutes).padStart(2, '0')}:
-    {String(seconds).padStart(2, '0')}
-  </Typography>
-</Box>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.70rem', my: 0.5 }}>
+              Diferencia
+            </Typography>
+            <Typography sx={{ fontSize: '0.70rem', my: 0.5 }}>
+              {days > 0 ? `${days} día${days > 1 ? 's' : ''} ` : ''}
+{String(hours).padStart(2, '0')}:
+{String(minutes).padStart(2, '0')}:
+{String(seconds).padStart(2, '0')}
+            </Typography>
+          </Box>
         </Stack>
       </Paper>
     </Stack>
