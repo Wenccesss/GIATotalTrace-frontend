@@ -8,7 +8,6 @@ import {
   CardContent,
   Paper,
   IconButton,
-  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -88,7 +87,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "linear-gradient(to bottom, #f8f9fa, #e9ecef)" }}>
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "linear-gradient(to bottom, #f8f9fa, #e9ecef)" }}>
       
       {/* BARRA SUPERIOR */}
       <Paper elevation={2} sx={{ borderRadius: 0, position: "sticky", top: 0, zIndex: 1000, background: "white" }}>
@@ -100,106 +99,98 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 EcoTrace
               </Typography>
             </Box>
-
-            <Tooltip title="Cerrar sesión">
-              <IconButton onClick={handleLogout} disabled={isLoggingOut} sx={{ color: "#2b6cb0" }}>
-                <Logout />
-              </IconButton>
-            </Tooltip>
+            <IconButton onClick={handleLogout} disabled={isLoggingOut} sx={{ color: "#2b6cb0" }}>
+              <Logout />
+            </IconButton>
           </Box>
         </Container>
       </Paper>
 
-      {/* CONTENIDO */}
-      <Container maxWidth="md">
-        <Box sx={{ mt: 2, textAlign: "center" }}>
-
-          {/* 🔵 CARRUSEL DE MÁQUINAS */}
-          <Box sx={{ position: "relative" }}>
-            <Box ref={emblaRef} sx={{ overflow: "hidden" }}>
-              <Box sx={{ display: "flex" }}>
-                {machines.map((m) => (
-                  <Box
-                    key={m.id}
+      {/* CONTENIDO CENTRAL */}
+      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        {/* CARRUSEL */}
+        <Box sx={{ width: "100%", flexGrow: 1, position: "relative" }}>
+          <Box ref={emblaRef} sx={{ overflow: "hidden", height: "100%" }}>
+            <Box sx={{ display: "flex", height: "100%" }}>
+              {machines.map((m) => (
+                <Box
+                  key={m.id}
+                  sx={{ flex: "0 0 100%", display: "flex", justifyContent: "center", alignItems: "center", padding: 2 }}
+                  onClick={() => handleMachineClick(m)}
+                >
+                  <Card
+                    elevation={5}
                     sx={{
-                      flex: "0 0 100%",
-                      padding: 2,
+                      borderRadius: 3,
+                      cursor: "pointer",
+                      width: "80%",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      "&:hover": { transform: "scale(1.02)" },
                     }}
-                    onClick={() => handleMachineClick(m)}
                   >
-                    <Card
-                      elevation={5}
+                    <CardMedia
+                      component="img"
+                      image={m.imageUrl}
+                      alt={m.name}
                       sx={{
-                        borderRadius: 3,
-                        cursor: "pointer",
-                        transition: "0.3s",
-                        "&:hover": { transform: "scale(1.02)" },
+                        flexGrow: 1,
+                        objectFit: "contain",
+                        backgroundColor: "#f7fafc",
+                        padding: 2,
                       }}
-                    >
-                      <CardMedia
-                        component="img"
-                        image={m.imageUrl}
-                        alt={m.name}
-                        sx={{
-                          height: 250,
-                          objectFit: "contain",
-                          backgroundColor: "#f7fafc",
-                          padding: 2,
-                        }}
-                      />
-                      <CardContent>
-                        <Typography variant="h5" fontWeight={700}>
-                          {m.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {m.description}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-
-            {/* BOTONES DE NAVEGACIÓN */}
-            <IconButton
-              onClick={scrollPrev}
-              sx={{ position: "absolute", top: "45%", left: -10, background: "white" }}
-            >
-              <ArrowBack />
-            </IconButton>
-
-            <IconButton
-              onClick={scrollNext}
-              sx={{ position: "absolute", top: "45%", right: -10, background: "white" }}
-            >
-              <ArrowForward />
-            </IconButton>
-          </Box>
-
-          {/* 🔵 PANEL IA */}
-          <Box sx={{ mt: 6 }}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6" fontWeight={600}>
-                  Preguntar a la IA sobre las máquinas
-                </Typography>
-              </AccordionSummary>
-
-              <AccordionDetails>
-                <Box sx={{ display: "flex", gap: 2 }}>
-                  <TextField
-                    fullWidth
-                    placeholder="Escribe tu pregunta..."
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                  />
-                  <Button variant="contained">Preguntar</Button>
+                    />
+                    <CardContent>
+                      <Typography variant="h5" fontWeight={700}>
+                        {m.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {m.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Box>
-              </AccordionDetails>
-            </Accordion>
+              ))}
+            </Box>
           </Box>
+
+          {/* BOTONES */}
+          <IconButton
+            onClick={scrollPrev}
+            sx={{ position: "absolute", top: "50%", left: 0, transform: "translate(-50%, -50%)", background: "white" }}
+          >
+            <ArrowBack />
+          </IconButton>
+          <IconButton
+            onClick={scrollNext}
+            sx={{ position: "absolute", top: "50%", right: 0, transform: "translate(50%, -50%)", background: "white" }}
+          >
+            <ArrowForward />
+          </IconButton>
         </Box>
+      </Box>
+
+      {/* PANEL IA ABAJO */}
+      <Container maxWidth="md" sx={{ mb: 4 }}>
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="h6" fontWeight={600}>
+              Preguntar a la IA sobre las máquinas
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField
+                fullWidth
+                placeholder="Escribe tu pregunta..."
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+              />
+              <Button variant="contained">Preguntar</Button>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
       </Container>
 
       <Snackbar
