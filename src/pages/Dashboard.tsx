@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -29,8 +29,11 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [carouselHeight, setCarouselHeight] = useState<number>(0);
 
-  // Variables para swipe táctil
+  const iaRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const handleLogout = async () => {
@@ -88,7 +91,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     }
   };
 
-  // Eventos touch para móviles
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX);
   };
@@ -97,15 +99,29 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     if (touchStartX === null) return;
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartX - touchEndX;
-    if (diff > 50) handleNext(); // swipe izquierda
-    else if (diff < -50) handlePrev(); // swipe derecha
+    if (diff > 50) handleNext();
+    else if (diff < -50) handlePrev();
     setTouchStartX(null);
   };
+
+  // Calcula altura del carrusel para que la IA siempre esté visible
+  const updateCarouselHeight = () => {
+    const headerHeight = headerRef.current?.offsetHeight || 0;
+    const iaHeight = iaRef.current?.offsetHeight || 200; // altura aproximada IA si no renderizada aún
+    const vh = window.innerHeight;
+    setCarouselHeight(vh - headerHeight - iaHeight - 16); // 16 px margen
+  };
+
+  useEffect(() => {
+    updateCarouselHeight();
+    window.addEventListener('resize', updateCarouselHeight);
+    return () => window.removeEventListener('resize', updateCarouselHeight);
+  }, []);
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
       {/* Barra superior */}
-      <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
+      <Paper ref={headerRef} elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -128,123 +144,119 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Carrusel y sección IA */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-        {/* Carrusel de imagen central */}
-        <Box
+      {/* Carrusel */}
+      <Box
+        sx={{
+          height: `${carouselHeight}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          paddingX: 2,
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Botones laterales */}
+        <IconButton
+          onClick={handlePrev}
           sx={{
-            flex: '1 1 auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            paddingX: 2,
-            marginBottom: 2, // espacio para que IA siempre visible
+            position: 'absolute',
+            left: 8,
+            zIndex: 10,
+            display: { xs: 'none', md: 'flex' },
+            backgroundColor: 'rgba(255,255,255,0.7)',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
           }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
         >
-          {/* Botones laterales solo en escritorio */}
-          <IconButton
-            onClick={handlePrev}
-            sx={{
-              position: 'absolute',
-              left: 8,
-              zIndex: 10,
-              display: { xs: 'none', md: 'flex' },
-              backgroundColor: 'rgba(255,255,255,0.7)',
-              '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            <ArrowBackIos />
-          </IconButton>
-          <IconButton
-            onClick={handleNext}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              zIndex: 10,
-              display: { xs: 'none', md: 'flex' },
-              backgroundColor: 'rgba(255,255,255,0.7)',
-              '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
-            }}
-          >
-            <ArrowForwardIos />
-          </IconButton>
+          <ArrowBackIos />
+        </IconButton>
+        <IconButton
+          onClick={handleNext}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            zIndex: 10,
+            display: { xs: 'none', md: 'flex' },
+            backgroundColor: 'rgba(255,255,255,0.7)',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
+          }}
+        >
+          <ArrowForwardIos />
+        </IconButton>
 
-          <Card
-            elevation={4}
-            sx={{
-              width: { xs: '90%', md: '60%' },
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              position: 'relative',
-            }}
+        <Card
+          elevation={4}
+          sx={{
+            width: { xs: '90%', md: '60%' },
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            position: 'relative',
+          }}
+        >
+          <CardActionArea
+            onClick={() => handleMachineClick(machines[currentIndex])}
+            sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
           >
-            <CardActionArea
-              onClick={() => handleMachineClick(machines[currentIndex])}
-              sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+            <CardMedia
+              component="img"
+              image={machines[currentIndex].imageUrl}
+              alt={machines[currentIndex].name}
+              sx={{ objectFit: 'cover', width: '100%', flex: 1 }}
+            />
+            {/* Texto centrado dentro de la imagen */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                width: '100%',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                padding: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+              }}
             >
-              <CardMedia
-                component="img"
-                image={machines[currentIndex].imageUrl}
-                alt={machines[currentIndex].name}
-                sx={{ objectFit: 'cover', width: '100%', flex: 1 }}
-              />
-              {/* Texto dentro de la imagen, centrado */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 0,
-                  width: '100%',
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  color: 'white',
-                  padding: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {machines[currentIndex].name}
-                </Typography>
-                <Typography variant="body2">{machines[currentIndex].description}</Typography>
-              </Box>
-            </CardActionArea>
-          </Card>
-        </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {machines[currentIndex].name}
+              </Typography>
+              <Typography variant="body2">{machines[currentIndex].description}</Typography>
+            </Box>
+          </CardActionArea>
+        </Card>
+      </Box>
 
-        {/* Sección IA (siempre visible) */}
-        <Box>
-          <Accordion defaultExpanded>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
-                Preguntar a la IA sobre las máquinas
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
-                Escribe preguntas generales, por ejemplo:  
-                • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-                • ¿Cuál fue la máquina con más producción esta semana?
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  fullWidth
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Escribe tu pregunta..."
-                />
-                <Button variant="contained" color="primary" onClick={handleAskAI}>
-                  Preguntar
-                </Button>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        </Box>
+      {/* Sección IA */}
+      <Box ref={iaRef} sx={{ marginBottom: 2 }}>
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ExpandMore />}>
+            <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
+              Preguntar a la IA sobre las máquinas
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
+              Escribe preguntas generales, por ejemplo:  
+              • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
+              • ¿Cuál fue la máquina con más producción esta semana?
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                fullWidth
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Escribe tu pregunta..."
+              />
+              <Button variant="contained" color="primary" onClick={handleAskAI}>
+                Preguntar
+              </Button>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
       </Box>
     </Box>
   );
