@@ -137,12 +137,20 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             </IconButton>
 
             <Card
-              elevation={4}
-              onClick={() => setLocation(`/machine/${machines[index].id}`)}
-              data-testid={`card-machine-${machines[index].id}`}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
+  elevation={4}
+  onClick={() => {
+    if (machines[index].id === "1") {
+      // Máquina operativa
+      setLocation(`/machine/1`);
+    } else {
+      // Máquinas en desarrollo
+      alert(`La ${machines[index].name} Está en desarrollo y aún no está disponible.`);
+    }
+  }}
+  data-testid={`card-machine-${machines[index].id}`}
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+>
               <CardMedia
                 component="img"
                 height="160"
