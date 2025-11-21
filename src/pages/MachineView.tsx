@@ -485,10 +485,10 @@ const exportCSV = () => {
             </Typography>
             <Typography sx={{ fontSize: '0.70rem', my: 0.5 }}>
               // Calcula días, horas, minutos y segundos
-const days = Math.floor(diffSec / 86400); // 1 día = 86400 segundos
-const hours = Math.floor((diffSec % 86400) / 3600);
-const minutes = Math.floor((diffSec % 3600) / 60);
-const seconds = diffSec % 60;
+              const days = Math.floor(diffSec / 86400); // 1 día = 86400 segundos
+              const hours = Math.floor((diffSec % 86400) / 3600);
+              const minutes = Math.floor((diffSec % 3600) / 60);
+              const seconds = diffSec % 60;
 
 // Renderiza la diferencia
 <Typography sx={{ fontWeight: 600 }}>
@@ -496,7 +496,6 @@ const seconds = diffSec % 60;
   {String(hours).padStart(2, '0')}:
   {String(minutes).padStart(2, '0')}:
   {String(seconds).padStart(2, '0')}
-</Typography>
             </Typography>
           </Box>
         </Stack>
