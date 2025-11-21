@@ -20,7 +20,7 @@ import {
 import { Factory, Logout, ExpandMore } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import machineImage from '@/assets/Imagen_Dashboard.jpg';
+import dashboardImage from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -55,7 +55,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       id: '1',
       name: 'Máquina 1',
       description: 'Centro de Mecanizado CNC',
-      imageUrl: machineImage,
+      imageUrl: dashboardImage,
     },
   ];
 
