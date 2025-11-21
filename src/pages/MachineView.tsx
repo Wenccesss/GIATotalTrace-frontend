@@ -369,7 +369,7 @@ const exportCSV = () => {
   }, [currentRange, width]);
   return (
     <Box sx={{ minHeight: '100vh', background: '#f8f9fa', py: 4 }}>
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters sx={{ px: 0 }}>
         <Button
           startIcon={<ArrowBack />}
           onClick={() => setLocation('/dashboard')}
