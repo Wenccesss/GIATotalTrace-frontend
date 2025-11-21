@@ -30,7 +30,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [, setLocation] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
-  const [currentMachine, setCurrentMachine] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -71,24 +71,24 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     },
   ];
 
-  const nextMachine = () => {
-    setCurrentMachine((prev) => (prev + 1) % machines.length);
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? machines.length - 1 : prev - 1));
   };
 
-  const prevMachine = () => {
-    setCurrentMachine((prev) => (prev - 1 + machines.length) % machines.length);
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev === machines.length - 1 ? 0 : prev + 1));
   };
 
-  const handleMachineClick = (index: number) => {
-    if (index === 0) {
-      setLocation(`/machine/${machines[index].id}`);
+  const handleMachineClick = (machine: typeof machines[0]) => {
+    if (machine.id === '1') {
+      setLocation(`/machine/${machine.id}`);
     } else {
-      alert('Esta máquina está en desarrollo');
+      alert(`${machine.name} está en desarrollo`);
     }
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)', overflowX: 'hidden' }}>
       {/* Barra superior */}
       <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
@@ -113,59 +113,74 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Contenedor principal */}
-      <Container maxWidth="lg" sx={{ height: 'calc(100vh - 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingY: 0 }}>
+      {/* Contenido principal */}
+      <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', paddingY: 0 }}>
         {/* Carrusel de máquinas */}
-        <Box sx={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 0, marginBottom: 0 }}>
-          {/* Botón izquierdo (oculto en móvil) */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            width: '100%',
+          }}
+        >
+          {/* Flechas solo en escritorio */}
           <IconButton
-            onClick={prevMachine}
-            sx={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: { xs: 'none', sm: 'flex' } }}
+            onClick={handlePrev}
+            sx={{
+              position: 'absolute',
+              left: 8,
+              zIndex: 10,
+              display: { xs: 'none', md: 'flex' },
+              backgroundColor: 'rgba(255,255,255,0.7)',
+              '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
+            }}
           >
             <ArrowBackIos />
+          </IconButton>
+          <IconButton
+            onClick={handleNext}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              zIndex: 10,
+              display: { xs: 'none', md: 'flex' },
+              backgroundColor: 'rgba(255,255,255,0.7)',
+              '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
+            }}
+          >
+            <ArrowForwardIos />
           </IconButton>
 
           <Card
             elevation={4}
             sx={{
-              maxWidth: '100%',
-              maxHeight: '100%',
+              width: { xs: '90%', md: '60%' },
+              height: '100%',
               display: 'flex',
-              justifyContent: 'center',
               alignItems: 'center',
+              justifyContent: 'center',
               backgroundColor: '#f7fafc',
-              padding: 1,
             }}
           >
-            <CardActionArea onClick={() => handleMachineClick(currentMachine)}>
+            <CardActionArea
+              onClick={() => handleMachineClick(machines[currentIndex])}
+              sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
               <CardMedia
                 component="img"
-                image={machines[currentMachine].imageUrl}
-                alt={machines[currentMachine].name}
-                sx={{ height: '80vh', width: 'auto', objectFit: 'contain' }}
+                image={machines[currentIndex].imageUrl}
+                alt={machines[currentIndex].name}
+                sx={{ objectFit: 'contain', width: '100%', maxHeight: '100%' }}
               />
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748' }}>
-                  {machines[currentMachine].name}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#718096' }}>
-                  {machines[currentMachine].description}
-                </Typography>
-              </CardContent>
             </CardActionArea>
           </Card>
-
-          {/* Botón derecho (oculto en móvil) */}
-          <IconButton
-            onClick={nextMachine}
-            sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: { xs: 'none', sm: 'flex' } }}
-          >
-            <ArrowForwardIos />
-          </IconButton>
         </Box>
 
         {/* Sección IA */}
-        <Box sx={{ marginTop: 2 }}>
+        <Box sx={{ marginTop: 2, marginBottom: 2 }}>
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
@@ -176,7 +191,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
                 Escribe preguntas generales, por ejemplo:  
                 • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-                • ¿Cuál fue la máquina con más producción esta semana?
+                • ¿Cuál fue la máquina con más produccion esta semana?
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
