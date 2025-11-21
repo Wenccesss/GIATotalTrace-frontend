@@ -116,32 +116,32 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       {/* Barra superior */}
       {/* Barra superior */}
 <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
-  <Container maxWidth="lg">
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
-      {/* Izquierda: Icono + texto EcoTrace */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Factory sx={{ fontSize: 32, color: '#2b6cb0' }} />
-        <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748' }}>
-          EcoTrace
-        </Typography>
-      </Box>
-
-      {/* Derecha: Botón cerrar sesión */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 500, color: '#2d3748' }}>
-          Cerrar sesión
-        </Typography>
-        <IconButton
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          data-testid="button-logout"
-          sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
-        >
-          <Logout />
-        </IconButton>
-      </Box>
+  <Container maxWidth={false} disableGutters>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
+    {/* Izquierda */}
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Factory sx={{ fontSize: 32, color: '#2b6cb0' }} />
+      <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748' }}>
+        EcoTrace
+      </Typography>
     </Box>
-  </Container>
+
+    {/* Derecha */}
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Typography variant="body2" sx={{ fontWeight: 500, color: '#2d3748' }}>
+        Cerrar sesión
+      </Typography>
+      <IconButton
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        data-testid="button-logout"
+        sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
+      >
+        <Logout />
+      </IconButton>
+    </Box>
+  </Box>
+</Container>
 </Paper>
 
       {/* Área de imagen y controles */}
