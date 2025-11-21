@@ -450,30 +450,30 @@ const exportCSV = () => {
         {/* Cada fila alinea texto con botón */}
         <Stack direction="column" spacing={2}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography sx={{ fontWeight: 500, color: 'black', fontSize: '0.75rem' }}>
+            <Typography sx={{ fontWeight: 500, color: 'black', fontSize: '0.85rem' }}>
               {estadoX1 ?? 'NULL'}
             </Typography>
-            <Typography>
+            <Typography sx={{ fontSize: '0.85rem'}}>
               {new Date(safeX1).toLocaleString('es-ES', {
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
               })}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography sx={{ fontWeight: 500, color: 'red' }}>
+            <Typography sx={{ fontWeight: 500, color: 'red', fontSize: '0.85rem' }}>
               {estadoX2 ?? 'NULL'}
             </Typography>
-            <Typography>
+            <Typography sx={{ fontSize: '0.85rem' }}>
               {new Date(safeX2).toLocaleString('es-ES', {
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
               })}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography sx={{ fontWeight: 600 }}>
-              Diferencia
+            <Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+              Tiempo
             </Typography>
-            <Typography>
+            <Typography sx={{ fontSize: '0.85rem' }}>
               {String(Math.floor(diffSec / 3600)).padStart(2, '0')}:
               {String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0')}:
               {String(diffSec % 60).padStart(2, '0')}
