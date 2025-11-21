@@ -309,8 +309,6 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const estadoX1 = stateAt(events, safeX1);
   const estadoX2 = stateAt(events, safeX2);
 
-  const diffMs = Math.abs(safeX2 - safeX1);
-  const diffSec = Math.floor(diffMs / 1000);
 
   // límite de 3 meses atrás
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
