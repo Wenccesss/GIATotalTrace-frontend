@@ -20,7 +20,7 @@ import {
 import { Factory, Logout, ExpandMore } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import machineImage from '@assets/generated_images/Industrial_CNC_machine_placeholder_de3a13aa.png';
+import machineImage from '@/attached_assets/generated_images/Imagen_Dashboard.jpg';
 
 interface DashboardProps {
   onLogout: () => void;
