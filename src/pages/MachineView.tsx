@@ -450,8 +450,8 @@ const exportCSV = () => {
         {/* Cada fila alinea texto con botón */}
         <Stack direction="column" spacing={2}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography sx={{ fontWeight: 500, color: 'black' }}>
-              {estadoX1 ?? 'Sin estado'}
+            <Typography sx={{ fontWeight: 500, color: 'black', fontSize: '0.75rem' }}>
+              {estadoX1 ?? 'NULL'}
             </Typography>
             <Typography>
               {new Date(safeX1).toLocaleString('es-ES', {
@@ -461,7 +461,7 @@ const exportCSV = () => {
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography sx={{ fontWeight: 500, color: 'red' }}>
-              {estadoX2 ?? 'Sin estado'}
+              {estadoX2 ?? 'NULL'}
             </Typography>
             <Typography>
               {new Date(safeX2).toLocaleString('es-ES', {
@@ -524,13 +524,13 @@ const exportCSV = () => {
     <Button variant="contained" color="secondary" startIcon={<PictureAsPdfIcon />} onClick={exportPDF}>Exportar PDF</Button>
 
     <Box sx={{ ml: 3 }}>
-      <Typography sx={{ fontWeight: 500, color: 'black' }}>
-        {estadoX1 ?? 'Sin estado'} | {new Date(safeX1).toLocaleString('es-ES', {
+      <Typography sx={{ fontWeight: 500, color: 'black',  }}>
+        {estadoX1 ?? 'NULL'} | {new Date(safeX1).toLocaleString('es-ES', {
           hour: '2-digit', minute: '2-digit', second: '2-digit',
         })}
       </Typography>
       <Typography sx={{ fontWeight: 500, color: 'red' }}>
-        {estadoX2 ?? 'Sin estado'} | {new Date(safeX2).toLocaleString('es-ES', {
+        {estadoX2 ?? 'NULL'} | {new Date(safeX2).toLocaleString('es-ES', {
           hour: '2-digit', minute: '2-digit', second: '2-digit',
         })}
       </Typography>
@@ -657,7 +657,7 @@ const exportCSV = () => {
                           minute: '2-digit',
                           second: '2-digit',
                         }),
-                        estado: estado ?? 'Sin estado',
+                        estado: estado ?? 'NULL',
                       });
                     }}
                     onMouseLeave={() => setHover(null)}
