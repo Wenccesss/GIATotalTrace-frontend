@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -7,6 +7,7 @@ import {
   CardActionArea,
   CardMedia,
   CardContent,
+  Grid,
   Paper,
   IconButton,
   Tooltip,
@@ -16,64 +17,63 @@ import {
   TextField,
   Button,
 } from '@mui/material';
-import { Factory, Logout, ExpandMore, ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
+import { Factory, Logout, ExpandMore, ArrowBack, ArrowForward } from '@mui/icons-material';
 import { useLocation } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
-import EmblaCarouselReact, { EmblaCarouselType } from 'embla-carousel-react';
-import dashboardImage from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
+
+// IMPORTA TUS IMÁGENES
+import imgMachine1 from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
+import imgMachine2 from '../attached_assets/generated_images/Imagen_Dashboard.jpg'; // puedes cambiar luego
+import imgMachine3 from '../attached_assets/generated_images/Imagen_Dashboard.jpg'; // puedes cambiar luego
 
 interface DashboardProps {
-  onLogout: () => void;
+  onLogout: () => void; // sigue siendo simulada
 }
 
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [, setLocation] = useLocation();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
-  const emblaRef = useRef<EmblaCarouselType | null>(null);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      const response = await apiRequest('POST', '/api/auth/logout', {});
-      await response.json();
-      onLogout();
-    } catch (err) {
-      console.error('Error logging out:', err);
-      onLogout();
-    } finally {
-      setIsLoggingOut(false);
-    }
+  // 🔥 AUTENTICACIÓN SIMULADA (no llama backend)
+  const handleLogout = () => {
+    console.log("Simulando logout...");
+    onLogout();
   };
 
-  const handleAskAI = () => {
-    console.log(`Pregunta a la IA: ${question}`);
-  };
-
+  // Máquinas para el carrusel
   const machines = [
-    {
-      id: '1',
-      name: 'Máquina 1',
-      description: 'Control Dimensional Barcino',
-      imageUrl: dashboardImage,
-    },
-    {
-      id: '2',
-      name: 'Máquina 2',
-      description: 'Control_calidad_ADDESCO',
-      imageUrl: dashboardImage,
-    },
-    {
-      id: '3',
-      name: 'Máquina 3',
-      description: 'Desbarbado_Palet',
-      imageUrl: dashboardImage,
-    },
+    { id: '1', name: 'Máquina 1', description: 'Control Dimensional BARCINO', imageUrl: imgMachine1 },
+    { id: '2', name: 'Máquina 2', description: 'Control Calidad ADDESCO', imageUrl: imgMachine2 },
+    { id: '3', name: 'Máquina 3', description: 'Desbarbado Palets', imageUrl: imgMachine3 },
   ];
+
+  // 🔥 Estado del carrusel
+  const [index, setIndex] = useState(0);
+
+  const prevMachine = () => {
+    setIndex((i) => (i === 0 ? machines.length - 1 : i - 1));
+  };
+
+  const nextMachine = () => {
+    setIndex((i) => (i === machines.length - 1 ? 0 : i + 1));
+  };
+
+  // Soporte swipe para móvil
+  let touchStartX = 0;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const endX = e.changedTouches[0].clientX;
+
+    if (touchStartX - endX > 50) nextMachine();  
+    if (endX - touchStartX > 50) prevMachine();
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
-      {/* Barra superior */}
+      {/* BARRA SUPERIOR */}
       <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
@@ -83,10 +83,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 EcoTrace
               </Typography>
             </Box>
-            <Tooltip title="Cerrar sesión">
+            <Tooltip title="Cerrar sesión (Simulada)">
               <IconButton
                 onClick={handleLogout}
-                disabled={isLoggingOut}
+                data-testid="button-logout"
                 sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
               >
                 <Logout />
@@ -96,12 +96,12 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Contenido principal */}
+      {/* CONTENIDO PRINCIPAL */}
       <Container maxWidth="lg">
         <Box sx={{ paddingY: 8, textAlign: 'center' }}>
           <Typography
             variant="h2"
-            component="h1"
+            data-testid="text-dashboard-title"
             sx={{
               fontWeight: 700,
               marginBottom: 2,
@@ -109,93 +109,96 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
             }}
           >
             EcoTrace
           </Typography>
-          <Typography variant="h5" sx={{ color: '#718096', fontWeight: 400, marginBottom: 6 }}>
-            Sistema de Trazabilidad Industrial
-          </Typography>
 
-          {/* Carrusel de máquinas */}
-          <Box sx={{ position: 'relative', maxWidth: 600, marginX: 'auto' }}>
-            <EmblaCarouselReact
-              htmlTagName="div"
-              emblaRef={emblaRef}
-              options={{ loop: true }}
-              style={{ overflow: 'hidden' }}
-            >
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                {machines.map((machine) => (
-                  <Card key={machine.id} sx={{ minWidth: 300, flexShrink: 0 }}>
-                    <CardActionArea onClick={() => setLocation(`/machine/${machine.id}`)}>
-                      <CardMedia
-                        component="img"
-                        image={machine.imageUrl}
-                        alt={machine.name}
-                        sx={{ height: 200, objectFit: 'contain', backgroundColor: '#f7fafc' }}
-                      />
-                      <CardContent>
-                        <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748' }}>
-                          {machine.name}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#718096' }}>
-                          {machine.description}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                ))}
-              </Box>
-            </EmblaCarouselReact>
-
-            {/* Botones de navegación */}
+          {/* CARRUSEL */}
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 480,
+              margin: '0 auto',
+              position: 'relative',
+            }}
+          >
+            {/* Botones en PC */}
             <IconButton
-              onClick={() => emblaRef.current?.scrollPrev()}
-              sx={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', zIndex: 10 }}
+              onClick={prevMachine}
+              sx={{
+                position: 'absolute',
+                left: -50,
+                top: '45%',
+                display: { xs: 'none', md: 'block' },
+              }}
             >
-              <ArrowBackIos />
+              <ArrowBack />
             </IconButton>
-            <IconButton
-              onClick={() => emblaRef.current?.scrollNext()}
-              sx={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', zIndex: 10 }}
+
+            <Card
+              elevation={4}
+              onClick={() => setLocation(`/machine/${machines[index].id}`)}
+              data-testid={`card-machine-${machines[index].id}`}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
-              <ArrowForwardIos />
+              <CardMedia
+                component="img"
+                height="160"
+                image={machines[index].imageUrl}
+                alt={machines[index].name}
+                sx={{ objectFit: 'contain', p: 1, backgroundColor: '#f7fafc' }}
+              />
+              <CardContent>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  {machines[index].name}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#718096' }}>
+                  {machines[index].description}
+                </Typography>
+              </CardContent>
+            </Card>
+
+            {/* Siguiente */}
+            <IconButton
+              onClick={nextMachine}
+              sx={{
+                position: 'absolute',
+                right: -50,
+                top: '45%',
+                display: { xs: 'none', md: 'block' },
+              }}
+            >
+              <ArrowForward />
             </IconButton>
           </Box>
 
-          <Box sx={{ marginTop: 8 }}>
+          {/* TEXTO */}
+          <Box sx={{ marginTop: 3 }}>
             <Typography variant="body2" sx={{ color: '#a0aec0' }}>
-              Haz clic en una máquina para ver su trazabilidad en tiempo real
+              Desliza o usa las flechas para cambiar de máquina
             </Typography>
           </Box>
 
-          {/* Desplegable IA */}
+          {/* IA */}
           <Box sx={{ marginTop: 6 }}>
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   Preguntar a la IA sobre las máquinas
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
-                  Escribe preguntas generales, por ejemplo:  
-                  • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-                  • ¿Cuál fue la máquina con más produccion esta semana?
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <TextField
-                    fullWidth
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Escribe tu pregunta..."
-                  />
-                  <Button variant="contained" color="primary" onClick={handleAskAI}>
-                    Preguntar
-                  </Button>
-                </Box>
+                <TextField
+                  fullWidth
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Escribe tu pregunta..."
+                />
+                <Button variant="contained" sx={{ mt: 2 }}>
+                  Preguntar
+                </Button>
               </AccordionDetails>
             </Accordion>
           </Box>
