@@ -7,7 +7,6 @@ import {
   CardActionArea,
   CardMedia,
   CardContent,
-  Grid,
   Paper,
   IconButton,
   Tooltip,
@@ -20,7 +19,7 @@ import {
 import { Factory, Logout, ExpandMore, ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import EmblaCarouselReact from 'embla-carousel-react';
+import EmblaCarouselReact, { EmblaCarouselType } from 'embla-carousel-react';
 import dashboardImage from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
 
 interface DashboardProps {
@@ -31,7 +30,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [, setLocation] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
-  const emblaRef = useRef<EmblaCarouselReact>(null);
+  const emblaRef = useRef<EmblaCarouselType | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -51,23 +50,25 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     console.log(`Pregunta a la IA: ${question}`);
   };
 
-  const scrollPrev = () => emblaRef.current?.scrollPrev();
-  const scrollNext = () => emblaRef.current?.scrollNext();
-
   const machines = [
     {
       id: '1',
       name: 'Máquina 1',
-      description: 'Centro de Mecanizado CNC',
+      description: 'Control Dimensional Barcino',
       imageUrl: dashboardImage,
     },
     {
       id: '2',
       name: 'Máquina 2',
-      description: 'Torno CNC de alta precisión',
+      description: 'Control_calidad_ADDESCO',
       imageUrl: dashboardImage,
     },
-    // Puedes agregar más máquinas aquí
+    {
+      id: '3',
+      name: 'Máquina 3',
+      description: 'Desbarbado_Palet',
+      imageUrl: dashboardImage,
+    },
   ];
 
   return (
@@ -86,7 +87,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <IconButton
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                data-testid="button-logout"
                 sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
               >
                 <Logout />
@@ -102,7 +102,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
           <Typography
             variant="h2"
             component="h1"
-            data-testid="text-dashboard-title"
             sx={{
               fontWeight: 700,
               marginBottom: 2,
@@ -120,48 +119,51 @@ export default function Dashboard({ onLogout }: DashboardProps) {
           </Typography>
 
           {/* Carrusel de máquinas */}
-          <Grid container justifyContent="center" alignItems="center" sx={{ marginBottom: 6 }}>
-            <IconButton onClick={scrollPrev} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+          <Box sx={{ position: 'relative', maxWidth: 600, marginX: 'auto' }}>
+            <EmblaCarouselReact
+              htmlTagName="div"
+              emblaRef={emblaRef}
+              options={{ loop: true }}
+              style={{ overflow: 'hidden' }}
+            >
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                {machines.map((machine) => (
+                  <Card key={machine.id} sx={{ minWidth: 300, flexShrink: 0 }}>
+                    <CardActionArea onClick={() => setLocation(`/machine/${machine.id}`)}>
+                      <CardMedia
+                        component="img"
+                        image={machine.imageUrl}
+                        alt={machine.name}
+                        sx={{ height: 200, objectFit: 'contain', backgroundColor: '#f7fafc' }}
+                      />
+                      <CardContent>
+                        <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748' }}>
+                          {machine.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#718096' }}>
+                          {machine.description}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                ))}
+              </Box>
+            </EmblaCarouselReact>
+
+            {/* Botones de navegación */}
+            <IconButton
+              onClick={() => emblaRef.current?.scrollPrev()}
+              sx={{ position: 'absolute', top: '50%', left: 0, transform: 'translateY(-50%)', zIndex: 10 }}
+            >
               <ArrowBackIos />
             </IconButton>
-
-            <Box sx={{ overflow: 'hidden', width: { xs: '90%', md: '600px' } }}>
-              <EmblaCarouselReact ref={emblaRef} options={{ loop: false, draggable: true }}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  {machines.map((machine) => (
-                    <Card key={machine.id} sx={{ minWidth: 300 }}>
-                      <CardActionArea onClick={() => setLocation(`/machine/${machine.id}`)}>
-                        <CardMedia
-                          component="img"
-                          image={machine.imageUrl}
-                          alt={machine.name}
-                          sx={{
-                            height: 150,
-                            width: '100%',
-                            objectFit: 'contain',
-                            padding: 1,
-                            backgroundColor: '#f7fafc',
-                          }}
-                        />
-                        <CardContent>
-                          <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748', marginBottom: 1 }}>
-                            {machine.name}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: '#718096' }}>
-                            {machine.description}
-                          </Typography>
-                        </CardContent>
-                      </CardActionArea>
-                    </Card>
-                  ))}
-                </Box>
-              </EmblaCarouselReact>
-            </Box>
-
-            <IconButton onClick={scrollNext} sx={{ display: { xs: 'none', md: 'inline-flex' } }}>
+            <IconButton
+              onClick={() => emblaRef.current?.scrollNext()}
+              sx={{ position: 'absolute', top: '50%', right: 0, transform: 'translateY(-50%)', zIndex: 10 }}
+            >
               <ArrowForwardIos />
             </IconButton>
-          </Grid>
+          </Box>
 
           <Box sx={{ marginTop: 8 }}>
             <Typography variant="body2" sx={{ color: '#a0aec0' }}>
