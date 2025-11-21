@@ -544,12 +544,12 @@ const exportCSV = () => {
     <Box sx={{ ml: 3 }}>
       <Typography sx={{ fontWeight: 500, color: 'black',  }}>
         {estadoX1 ?? 'NULL'} | {new Date(safeX1).toLocaleString('es-ES', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          day: '2-digit',month: '2-digit',year: 'numeric',hour: '2-digit',minute: '2-digit',second: '2-digit',
         })}
       </Typography>
       <Typography sx={{ fontWeight: 500, color: 'red' }}>
         {estadoX2 ?? 'NULL'} | {new Date(safeX2).toLocaleString('es-ES', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          day: '2-digit',month: '2-digit',year: 'numeric',hour: '2-digit',minute: '2-digit',second: '2-digit',
         })}
       </Typography>
       <Typography sx={{ mt: 1, fontWeight: 600 }}>
