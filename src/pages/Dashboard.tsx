@@ -6,7 +6,6 @@ import {
   Card,
   CardActionArea,
   CardMedia,
-  CardContent,
   IconButton,
   Tooltip,
   Accordion,
@@ -30,6 +29,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Variables para swipe táctil
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -86,6 +88,20 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     }
   };
 
+  // Eventos touch para móviles
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    if (diff > 50) handleNext(); // swipe izquierda
+    else if (diff < -50) handlePrev(); // swipe derecha
+    setTouchStartX(null);
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)', overflowX: 'hidden' }}>
       {/* Barra superior */}
@@ -112,32 +128,30 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Contenido principal */}
+      {/* Contenedor principal */}
       <Container
         maxWidth="lg"
         sx={{
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 64px)',
-          justifyContent: 'space-between', // Mantiene IA visible
+          justifyContent: 'flex-start',
           paddingY: 2,
         }}
       >
-        {/* Carrusel de máquinas */}
+        {/* Carrusel de imagen central */}
         <Box
           sx={{
+            flex: 1,
             display: 'flex',
-            overflowX: { xs: 'auto', md: 'hidden' }, // Scroll horizontal en móvil
-            scrollSnapType: { xs: 'x mandatory', md: 'none' },
-            gap: 2,
-            width: '100%',
-            flex: '1 1 auto',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
           }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
-          {/* Flechas solo en escritorio */}
+          {/* Botones laterales solo en escritorio */}
           <IconButton
             onClick={handlePrev}
             sx={{
@@ -165,30 +179,41 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             <ArrowForwardIos />
           </IconButton>
 
-          {machines.map((machine, index) => (
-            <Card
-              key={machine.id}
-              elevation={4}
-              sx={{
-                minWidth: { xs: '80%', md: '60%' },
-                scrollSnapAlign: 'center',
-                flexShrink: 0,
-                backgroundColor: '#f7fafc',
-              }}
+          <Card
+            elevation={4}
+            sx={{
+              width: { xs: '90%', md: '60%' },
+              height: '100%',
+              maxHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              backgroundColor: '#f7fafc',
+            }}
+          >
+            <CardActionArea
+              onClick={() => handleMachineClick(machines[currentIndex])}
+              sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
             >
-              <CardActionArea onClick={() => handleMachineClick(machine)}>
-                <CardMedia
-                  component="img"
-                  image={machine.imageUrl}
-                  alt={machine.name}
-                  sx={{ objectFit: 'contain', width: '100%', height: 300 }}
-                />
-              </CardActionArea>
-            </Card>
-          ))}
+              <CardMedia
+                component="img"
+                image={machines[currentIndex].imageUrl}
+                alt={machines[currentIndex].name}
+                sx={{ objectFit: 'contain', width: '100%', flex: 1 }}
+              />
+              <Box sx={{ padding: 2, backgroundColor: 'rgba(0,0,0,0.05)' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {machines[currentIndex].name}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#4a5568' }}>
+                  {machines[currentIndex].description}
+                </Typography>
+              </Box>
+            </CardActionArea>
+          </Card>
         </Box>
 
-        {/* Sección IA siempre visible */}
+        {/* Sección IA (sin cambios) */}
         <Box sx={{ marginTop: 2 }}>
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
