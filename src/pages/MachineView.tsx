@@ -455,7 +455,12 @@ const exportCSV = () => {
             </Typography>
             <Typography sx={{ fontSize: '0.85rem'}}>
               {new Date(safeX1).toLocaleString('es-ES', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
               })}
             </Typography>
           </Box>
@@ -465,7 +470,12 @@ const exportCSV = () => {
             </Typography>
             <Typography sx={{ fontSize: '0.85rem' }}>
               {new Date(safeX2).toLocaleString('es-ES', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
               })}
             </Typography>
           </Box>
