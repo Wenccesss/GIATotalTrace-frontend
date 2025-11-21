@@ -7,8 +7,6 @@ import {
   CardActionArea,
   CardMedia,
   CardContent,
-  Grid,
-  Paper,
   IconButton,
   Tooltip,
   Accordion,
@@ -16,6 +14,7 @@ import {
   AccordionDetails,
   TextField,
   Button,
+  Paper,
 } from '@mui/material';
 import { Factory, Logout, ExpandMore, ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
 import { useLocation } from 'wouter';
@@ -114,16 +113,28 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       </Paper>
 
       {/* Contenido principal */}
-      <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', paddingY: 0 }}>
+      <Container
+        maxWidth="lg"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: 'calc(100vh - 64px)',
+          justifyContent: 'space-between', // Mantiene IA visible
+          paddingY: 2,
+        }}
+      >
         {/* Carrusel de máquinas */}
         <Box
           sx={{
-            flex: 1,
             display: 'flex',
+            overflowX: { xs: 'auto', md: 'hidden' }, // Scroll horizontal en móvil
+            scrollSnapType: { xs: 'x mandatory', md: 'none' },
+            gap: 2,
+            width: '100%',
+            flex: '1 1 auto',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            width: '100%',
           }}
         >
           {/* Flechas solo en escritorio */}
@@ -154,34 +165,32 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             <ArrowForwardIos />
           </IconButton>
 
-          <Card
-            elevation={4}
-            sx={{
-              width: { xs: '90%', md: '60%' },
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f7fafc',
-            }}
-          >
-            <CardActionArea
-              onClick={() => handleMachineClick(machines[currentIndex])}
-              sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          {machines.map((machine, index) => (
+            <Card
+              key={machine.id}
+              elevation={4}
+              sx={{
+                minWidth: { xs: '80%', md: '60%' },
+                scrollSnapAlign: 'center',
+                flexShrink: 0,
+                backgroundColor: '#f7fafc',
+              }}
             >
-              <CardMedia
-                component="img"
-                image={machines[currentIndex].imageUrl}
-                alt={machines[currentIndex].name}
-                sx={{ objectFit: 'contain', width: '100%', maxHeight: '100%' }}
-              />
-            </CardActionArea>
-          </Card>
+              <CardActionArea onClick={() => handleMachineClick(machine)}>
+                <CardMedia
+                  component="img"
+                  image={machine.imageUrl}
+                  alt={machine.name}
+                  sx={{ objectFit: 'contain', width: '100%', height: 300 }}
+                />
+              </CardActionArea>
+            </Card>
+          ))}
         </Box>
 
-        {/* Sección IA */}
-        <Box sx={{ marginTop: 2, marginBottom: 2 }}>
-          <Accordion>
+        {/* Sección IA siempre visible */}
+        <Box sx={{ marginTop: 2 }}>
+          <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
                 Preguntar a la IA sobre las máquinas
@@ -191,7 +200,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
                 Escribe preguntas generales, por ejemplo:  
                 • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-                • ¿Cuál fue la máquina con más produccion esta semana?
+                • ¿Cuál fue la máquina con más producción esta semana?
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
