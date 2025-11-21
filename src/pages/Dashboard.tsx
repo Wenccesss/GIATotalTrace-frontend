@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Container,
@@ -29,10 +29,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [carouselHeight, setCarouselHeight] = useState<number>(0);
-
-  const iaRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
@@ -104,18 +101,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     setTouchStartX(null);
   };
 
-  const updateCarouselHeight = () => {
-    const headerHeight = headerRef.current?.offsetHeight || 0;
-    const iaHeight = iaRef.current?.offsetHeight || 200; // fallback
-    const vh = window.innerHeight;
-    setCarouselHeight(vh - headerHeight - iaHeight - 16); // 16px margen
+  const handleAccordionChange = (_: React.SyntheticEvent, isExpanded: boolean) => {
+    // Al hacer clic para expandir / colapsar
+    setExpanded(isExpanded);
   };
-
-  useEffect(() => {
-    updateCarouselHeight();
-    window.addEventListener('resize', updateCarouselHeight);
-    return () => window.removeEventListener('resize', updateCarouselHeight);
-  }, []);
 
   return (
     <Box
@@ -127,11 +116,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       }}
     >
       {/* Barra superior */}
-      <Paper
-        ref={headerRef}
-        elevation={2}
-        sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}
-      >
+      <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -154,10 +139,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Carrusel */}
+      {/* Área de imagen y controles */}
       <Box
         sx={{
-          height: `${carouselHeight}px`,
+          flexGrow: 1,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -167,7 +152,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Botones laterales */}
+        {/* Botones prev / next */}
         <IconButton
           onClick={handlePrev}
           sx={{
@@ -252,38 +237,34 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Card>
       </Box>
 
-      {/* Sección IA */}
-      <Box
-        ref={iaRef}
-        sx={{
-          paddingX: 2,
-          paddingBottom: 2,
-          backgroundColor: 'transparent',
-          flexShrink: 0,
-        }}
-      >
-        <Accordion defaultExpanded>
+      {/* Sección IA que puede expandirse hacia abajo */}
+      <Box sx={{ paddingX: 2, paddingBottom: 2 }}>
+        <Accordion expanded={expanded} onChange={handleAccordionChange}>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
               Preguntar a la IA sobre las máquinas
             </Typography>
           </AccordionSummary>
-          <AccordionDetails>
-            <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
-              Escribe preguntas generales, por ejemplo:  
-              • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-              • ¿Cuál fue la máquina con más producción esta semana?
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+          <AccordionDetails sx={{ px: 0 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="body2" sx={{ color: '#4a5568' }}>
+                Escribe preguntas generales, por ejemplo:  
+                • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
+                • ¿Cuál fue la máquina con más producción esta semana?
+              </Typography>
               <TextField
                 fullWidth
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Escribe tu pregunta..."
+                multiline
+                minRows={3}
               />
-              <Button variant="contained" color="primary" onClick={handleAskAI}>
-                Preguntar
-              </Button>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="contained" color="primary" onClick={handleAskAI}>
+                  Preguntar
+                </Button>
+              </Box>
             </Box>
           </AccordionDetails>
         </Accordion>
