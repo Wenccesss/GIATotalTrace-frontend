@@ -7,6 +7,7 @@ import {
   CardActionArea,
   CardMedia,
   CardContent,
+  Grid,
   Paper,
   IconButton,
   Tooltip,
@@ -29,7 +30,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [, setLocation] = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [question, setQuestion] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentMachine, setCurrentMachine] = useState(0);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -50,24 +51,44 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   };
 
   const machines = [
-    { id: '1', name: 'Máquina 1', description: 'Centro de Mecanizado CNC', imageUrl: dashboardImage },
-    { id: '2', name: 'Máquina 2', description: 'En desarrollo', imageUrl: dashboardImage },
-    { id: '3', name: 'Máquina 3', description: 'En desarrollo', imageUrl: dashboardImage },
+    {
+      id: '1',
+      name: 'Máquina 1',
+      description: 'Centro de Mecanizado CNC',
+      imageUrl: dashboardImage,
+    },
+    {
+      id: '2',
+      name: 'Máquina 2',
+      description: 'En desarrollo',
+      imageUrl: dashboardImage,
+    },
+    {
+      id: '3',
+      name: 'Máquina 3',
+      description: 'En desarrollo',
+      imageUrl: dashboardImage,
+    },
   ];
 
-  const prevMachine = () => setCurrentIndex((prev) => (prev === 0 ? machines.length - 1 : prev - 1));
-  const nextMachine = () => setCurrentIndex((prev) => (prev === machines.length - 1 ? 0 : prev + 1));
+  const nextMachine = () => {
+    setCurrentMachine((prev) => (prev + 1) % machines.length);
+  };
 
-  const handleMachineClick = (machine: typeof machines[0]) => {
-    if (machine.id === '1') {
-      setLocation(`/machine/${machine.id}`);
+  const prevMachine = () => {
+    setCurrentMachine((prev) => (prev - 1 + machines.length) % machines.length);
+  };
+
+  const handleMachineClick = (index: number) => {
+    if (index === 0) {
+      setLocation(`/machine/${machines[index].id}`);
     } else {
       alert('Esta máquina está en desarrollo');
     }
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
       {/* Barra superior */}
       <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
@@ -92,72 +113,85 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Contenedor principal del carrusel */}
-      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', paddingX: 2 }}>
-        {/* Botón izquierdo */}
-        <IconButton
-          onClick={prevMachine}
-          sx={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-        >
-          <ArrowBackIos />
-        </IconButton>
+      {/* Contenedor principal */}
+      <Container maxWidth="lg" sx={{ height: 'calc(100vh - 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingY: 0 }}>
+        {/* Carrusel de máquinas */}
+        <Box sx={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 0, marginBottom: 0 }}>
+          {/* Botón izquierdo (oculto en móvil) */}
+          <IconButton
+            onClick={prevMachine}
+            sx={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: { xs: 'none', sm: 'flex' } }}
+          >
+            <ArrowBackIos />
+          </IconButton>
 
-        {/* Imagen de máquina */}
-        <Card sx={{ maxWidth: '800px', width: '100%' }}>
-          <CardActionArea onClick={() => handleMachineClick(machines[currentIndex])}>
-            <CardMedia
-              component="img"
-              image={machines[currentIndex].imageUrl}
-              alt={machines[currentIndex].name}
-              sx={{ height: '400px', objectFit: 'contain', backgroundColor: '#f7fafc' }}
-            />
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748', marginBottom: 1 }}>
-                {machines[currentIndex].name}
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#718096' }}>
-                {machines[currentIndex].description}
-              </Typography>
-            </CardContent>
-          </CardActionArea>
-        </Card>
-
-        {/* Botón derecho */}
-        <IconButton
-          onClick={nextMachine}
-          sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-        >
-          <ArrowForwardIos />
-        </IconButton>
-      </Box>
-
-      {/* Sección IA abajo */}
-      <Container maxWidth="lg" sx={{ marginTop: 4, marginBottom: 4 }}>
-        <Accordion>
-          <AccordionSummary expandIcon={<ExpandMore />}>
-            <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
-              Preguntar a la IA sobre las máquinas
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
-              Escribe preguntas generales, por ejemplo:  
-              • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
-              • ¿Cuál fue la máquina con más producción esta semana?
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                fullWidth
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Escribe tu pregunta..."
+          <Card
+            elevation={4}
+            sx={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: '#f7fafc',
+              padding: 1,
+            }}
+          >
+            <CardActionArea onClick={() => handleMachineClick(currentMachine)}>
+              <CardMedia
+                component="img"
+                image={machines[currentMachine].imageUrl}
+                alt={machines[currentMachine].name}
+                sx={{ height: '80vh', width: 'auto', objectFit: 'contain' }}
               />
-              <Button variant="contained" color="primary" onClick={handleAskAI}>
-                Preguntar
-              </Button>
-            </Box>
-          </AccordionDetails>
-        </Accordion>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748' }}>
+                  {machines[currentMachine].name}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#718096' }}>
+                  {machines[currentMachine].description}
+                </Typography>
+              </CardContent>
+            </CardActionArea>
+          </Card>
+
+          {/* Botón derecho (oculto en móvil) */}
+          <IconButton
+            onClick={nextMachine}
+            sx={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 10, display: { xs: 'none', sm: 'flex' } }}
+          >
+            <ArrowForwardIos />
+          </IconButton>
+        </Box>
+
+        {/* Sección IA */}
+        <Box sx={{ marginTop: 2 }}>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
+                Preguntar a la IA sobre las máquinas
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography variant="body2" sx={{ color: '#4a5568', marginBottom: 2 }}>
+                Escribe preguntas generales, por ejemplo:  
+                • ¿Cuánto tiempo estuvo parada la máquina 1 hoy?  
+                • ¿Cuál fue la máquina con más producción esta semana?
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Escribe tu pregunta..."
+                />
+                <Button variant="contained" color="primary" onClick={handleAskAI}>
+                  Preguntar
+                </Button>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
       </Container>
     </Box>
   );
