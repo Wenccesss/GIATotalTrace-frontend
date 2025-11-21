@@ -181,16 +181,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </IconButton>
 
         <Card
-          elevation={4}
-          sx={{
-            width: { xs: '90%', md: '60%' },
-            height: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative',
-          }}
-        >
+  elevation={4}
+  sx={{
+    width: { xs: '90%', md: '60%' },
+    maxHeight: '80vh',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  }}
+>
           <CardActionArea
             onClick={() => handleMachineClick(machines[currentIndex])}
             sx={{
