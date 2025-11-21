@@ -129,7 +129,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       </Paper>
 
       {/* Carrusel y sección IA */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
         {/* Carrusel de imagen central */}
         <Box
           sx={{
@@ -139,6 +139,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             justifyContent: 'center',
             position: 'relative',
             paddingX: 2,
+            marginBottom: 2, // espacio para que IA siempre visible
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -192,7 +193,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 alt={machines[currentIndex].name}
                 sx={{ objectFit: 'cover', width: '100%', flex: 1 }}
               />
-              {/* Texto dentro de la imagen */}
+              {/* Texto dentro de la imagen, centrado */}
               <Box
                 sx={{
                   position: 'absolute',
@@ -200,7 +201,11 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                   width: '100%',
                   backgroundColor: 'rgba(0,0,0,0.5)',
                   color: 'white',
-                  padding: 1.5,
+                  padding: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
                 }}
               >
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -212,8 +217,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
           </Card>
         </Box>
 
-        {/* Sección IA (siempre visible, sin cambios) */}
-        <Box sx={{ marginTop: 2 }}>
+        {/* Sección IA (siempre visible) */}
+        <Box>
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600 }}>
