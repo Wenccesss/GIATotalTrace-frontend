@@ -36,24 +36,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      const response = await apiRequest('POST', '/api/auth/logout', {});
-      await response.json();
-      onLogout();
-    } catch (err) {
-      console.error('Error logging out:', err);
-      onLogout();
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
-
-  const handleAskAI = () => {
-    console.log(`Pregunta a la IA: ${question}`);
-  };
-
   const machines = [
     {
       id: '1',
@@ -74,6 +56,24 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       imageUrl: dashboardImage,
     },
   ];
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await apiRequest('POST', '/api/auth/logout', {});
+      await response.json();
+      onLogout();
+    } catch (err) {
+      console.error('Error logging out:', err);
+      onLogout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleAskAI = () => {
+    console.log(`Pregunta a la IA: ${question}`);
+  };
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev === 0 ? machines.length - 1 : prev - 1));
@@ -104,10 +104,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     setTouchStartX(null);
   };
 
-  // Calcula altura del carrusel para que la IA siempre esté visible
   const updateCarouselHeight = () => {
     const headerHeight = headerRef.current?.offsetHeight || 0;
-    const iaHeight = iaRef.current?.offsetHeight || 200; // altura aproximada IA si no renderizada aún
+    const iaHeight = iaRef.current?.offsetHeight || 200; // altura aproximada IA si aún no renderizada
     const vh = window.innerHeight;
     setCarouselHeight(vh - headerHeight - iaHeight - 16); // 16 px margen
   };
@@ -192,19 +191,25 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-end',
+            justifyContent: 'center', // centra verticalmente la imagen
             position: 'relative',
           }}
         >
           <CardActionArea
             onClick={() => handleMachineClick(machines[currentIndex])}
-            sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+            sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
           >
             <CardMedia
               component="img"
               image={machines[currentIndex].imageUrl}
               alt={machines[currentIndex].name}
-              sx={{ objectFit: 'cover', width: '100%', flex: 1 }}
+              sx={{
+                objectFit: 'contain', // se ve la imagen entera
+                width: '100%',
+                height: '100%',
+                display: 'block',
+                flex: 1,
+              }}
             />
             {/* Texto centrado dentro de la imagen */}
             <Box
