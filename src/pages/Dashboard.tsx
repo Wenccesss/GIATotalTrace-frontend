@@ -103,7 +103,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)', overflowX: 'hidden' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%)' }}>
       {/* Barra superior */}
       <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
         <Container maxWidth="lg">
@@ -128,25 +128,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         </Container>
       </Paper>
 
-      {/* Contenedor principal */}
-      <Container
-        maxWidth="lg"
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: 'calc(100vh - 64px)',
-          justifyContent: 'flex-start',
-          paddingY: 2,
-        }}
-      >
+      {/* Carrusel y sección IA */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Carrusel de imagen central */}
         <Box
           sx={{
-            flex: 1,
+            flex: '1 1 auto',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            paddingX: 2,
           }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -184,11 +176,10 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             sx={{
               width: { xs: '90%', md: '60%' },
               height: '100%',
-              maxHeight: '100%',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'flex-end',
-              backgroundColor: '#f7fafc',
+              position: 'relative',
             }}
           >
             <CardActionArea
@@ -199,21 +190,29 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 component="img"
                 image={machines[currentIndex].imageUrl}
                 alt={machines[currentIndex].name}
-                sx={{ objectFit: 'contain', width: '100%', flex: 1 }}
+                sx={{ objectFit: 'cover', width: '100%', flex: 1 }}
               />
-              <Box sx={{ padding: 2, backgroundColor: 'rgba(0,0,0,0.05)' }}>
+              {/* Texto dentro de la imagen */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  width: '100%',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  padding: 1.5,
+                }}
+              >
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {machines[currentIndex].name}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#4a5568' }}>
-                  {machines[currentIndex].description}
-                </Typography>
+                <Typography variant="body2">{machines[currentIndex].description}</Typography>
               </Box>
             </CardActionArea>
           </Card>
         </Box>
 
-        {/* Sección IA (sin cambios) */}
+        {/* Sección IA (siempre visible, sin cambios) */}
         <Box sx={{ marginTop: 2 }}>
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMore />}>
@@ -241,7 +240,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             </AccordionDetails>
           </Accordion>
         </Box>
-      </Container>
+      </Box>
     </Box>
   );
 }
