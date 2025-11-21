@@ -130,7 +130,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                       height="120" // más pequeña
                       image={machine.imageUrl}
                       alt={machine.name}
-                      sx={{ objectFit: 'contain', backgroundColor: '#f7fafc' }}
+                      sx={{
+    height: 150,          // altura ajustable
+    width: '100%',        // ocupa todo el ancho disponible
+    objectFit: 'contain', // mantiene proporciones
+    padding: 1,           // margen interno
+    backgroundColor: '#f7fafc',
+  }}
                     />
                     <CardContent sx={{ padding: 3 }}>
                       <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: '#2d3748', marginBottom: 1 }}>
