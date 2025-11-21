@@ -36,19 +36,19 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     {
       id: '1',
       name: 'Máquina 1',
-      description: 'Centro de Mecanizado CNC',
+      description: 'Control Dimensional BARCINO',
       imageUrl: dashboardImage,
     },
     {
       id: '2',
       name: 'Máquina 2',
-      description: 'En desarrollo',
+      description: 'Control Calidad ADDESCO',
       imageUrl: dashboardImage,
     },
     {
       id: '3',
       name: 'Máquina 3',
-      description: 'En desarrollo',
+      description: 'Desbarbado Palets',
       imageUrl: dashboardImage,
     },
   ];
@@ -114,28 +114,35 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       }}
     >
       {/* Barra superior */}
-      <Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Factory sx={{ fontSize: 32, color: '#2b6cb0' }} />
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748' }}>
-                EcoTrace
-              </Typography>
-            </Box>
-            <Tooltip title="Cerrar sesión">
-              <IconButton
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                data-testid="button-logout"
-                sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
-              >
-                <Logout />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Container>
-      </Paper>
+      {/* Barra superior */}
+<Paper elevation={2} sx={{ borderRadius: 0, position: 'sticky', top: 0, zIndex: 1000, background: 'white' }}>
+  <Container maxWidth="lg">
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 2 }}>
+      {/* Izquierda: Icono + texto EcoTrace */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Factory sx={{ fontSize: 32, color: '#2b6cb0' }} />
+        <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748' }}>
+          EcoTrace
+        </Typography>
+      </Box>
+
+      {/* Derecha: Botón cerrar sesión */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 500, color: '#2d3748' }}>
+          Cerrar sesión
+        </Typography>
+        <IconButton
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          data-testid="button-logout"
+          sx={{ color: '#2b6cb0', '&:hover': { backgroundColor: 'rgba(43, 108, 176, 0.1)' } }}
+        >
+          <Logout />
+        </IconButton>
+      </Box>
+    </Box>
+  </Container>
+</Paper>
 
       {/* Área de imagen y controles */}
       <Box
