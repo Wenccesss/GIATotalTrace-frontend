@@ -28,7 +28,7 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
 
     // Lógica de validación hardcodeada
-    if (username === 'admin' && password === 'GIATT') {
+    if (username === 'admin' && password === 'admin') {
       onLogin(); // acceso correcto
     } else {
       setError('Usuario o contraseña incorrectos. Intenta nuevamente.');

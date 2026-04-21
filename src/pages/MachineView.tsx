@@ -1,3 +1,6 @@
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Table,
@@ -293,6 +296,35 @@ export default function MachineView({ machineId }: { machineId: string }) {
   const handleMouseUp = () => setDragging(null);
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
+
+// 🔥 Tiempo real Firestore
+useEffect(() => {
+  const q = query(
+    collection(db, "eventos"),
+    orderBy("hora", "asc")
+  );
+
+  const unsub = onSnapshot(q, (snapshot) => {
+    const arr = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        estado: data.estado === "MARCHA" ? "MARCHA" : "PARO",
+        hora: String(data.hora),
+      };
+    });
+
+    arr.sort((a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+    setEvents(arr);
+  });
+
+  return () => unsub();
+}, []);
+
+
+
+
+
 
   const safeX1 = selectedX1 ?? (currentRange ? currentRange[0] : startTimestamp);
   const safeX2 = selectedX2 ?? (currentRange ? currentRange[1] : endTimestamp);

@@ -12,12 +12,12 @@ import MachineView from '@/pages/MachineView';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#2b6cb0',   // azul corporativo
+      main: '#2b6cb0',
       dark: '#2c5282',
       light: '#4299e1',
     },
     secondary: {
-      main: '#2d3748',   // gris oscuro corporativo
+      main: '#2d3748',
       dark: '#1a202c',
       light: '#4a5568',
     },
@@ -50,11 +50,11 @@ const theme = createTheme({
 
 function ProtectedRoute({ component: Component, isAuthenticated, ...rest }: any) {
   const [location] = useLocation();
-  
+
   if (!isAuthenticated && location !== '/') {
     return <Redirect to="/" />;
   }
-  
+
   return <Component {...rest} />;
 }
 
@@ -68,7 +68,7 @@ function Router({ isAuthenticated, onLogin, onLogout }: any) {
           <Login onLogin={onLogin} />
         )}
       </Route>
-      
+
       <Route path="/dashboard">
         <ProtectedRoute
           component={Dashboard}
@@ -76,7 +76,7 @@ function Router({ isAuthenticated, onLogin, onLogout }: any) {
           onLogout={onLogout}
         />
       </Route>
-      
+
       <Route path="/machine/:id">
         {(params) => (
           <ProtectedRoute
@@ -98,23 +98,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
+  // 🔥 Autenticación LOCAL (sin backend)
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/check', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        setIsAuthenticated(data.isAuthenticated || false);
-      } catch (err) {
-        console.error('Error checking auth:', err);
-        setIsAuthenticated(false);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkAuth();
+    setIsCheckingAuth(false);
   }, []);
 
   const handleLogin = () => {
@@ -135,7 +121,7 @@ function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)', // gradiente azul
+            background: 'linear-gradient(135deg, #2b6cb0 0%, #2c5282 100%)',
           }}
         >
           <CircularProgress sx={{ color: 'white' }} size={60} />
