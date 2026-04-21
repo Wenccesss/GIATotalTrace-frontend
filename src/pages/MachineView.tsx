@@ -60,7 +60,7 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const fetchEvents = async (start?: number | null, end?: number | null) => {
     try {
-      let url = 'https://us-central1-ecotrace-d35d9.cloudfunctions.net/eventos';
+      let url = 'https://eventos-2zwtbjxr7a-uc.a.run.app';
       if (start || end) {
         const params = new URLSearchParams();
         if (start) params.append('start', new Date(start!).toISOString());
