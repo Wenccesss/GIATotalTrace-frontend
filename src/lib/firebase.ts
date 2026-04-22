@@ -1,14 +1,17 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
+  apiKey: "AIzaSyCwsQ14lHZcV0LyP2W1SJapiA8Eo71vDOc",
   authDomain: "ecotrace-d35d9.firebaseapp.com",
   projectId: "ecotrace-d35d9",
-  storageBucket: "ecotrace-d35d9.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  storageBucket: "ecotrace-d35d9.firebasestorage.app",
+  messagingSenderId: "165822620763",
+  appId: "1:165822620763:web:38c3ccbb69ff1e41dd4b7e"
 };
+
+
 
 const app = initializeApp(firebaseConfig);
 
