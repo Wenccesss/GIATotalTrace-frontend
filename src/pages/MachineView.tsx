@@ -1,5 +1,4 @@
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
@@ -71,12 +70,12 @@ export default function MachineView({ machineId }: { machineId: string }) {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
       const normalized: Event[] = arr
-        .map((e: any) => ({
-          id: String(e.id ?? ''),
-          estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
-          hora: String(e.hora),
-        }))
-        .sort((a: Event, b: Event) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
+  .map((e: any) => ({
+    id: String(e.id ?? ''),
+    estado: e.estado === 'MARCHA' ? 'MARCHA' : 'PARO',
+    hora: new Date(e.hora).getTime() - 2*60*60*1000,   // ← CORRECCIÓN AQUÍ
+  }))
+  .sort((a, b) => a.hora - b.hora);
       setEvents(normalized);
     } catch (err) {
       console.error('Error fetching events', err);
@@ -110,8 +109,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
       setOpenDialog(true);
       return;
     }
-    const startLocalMs = new Date(startDateInput).getTime();
-    const endLocalMs = new Date(endDateInput).getTime();
+    const startLocalMs = new Date(startDateInput).getTime(); 
+    const endLocalMs = new Date(endDateInput).getTime();     
 
     setStartMs(startLocalMs);
     setEndMs(endLocalMs);
@@ -297,29 +296,8 @@ export default function MachineView({ machineId }: { machineId: string }) {
 
   const [hover, setHover] = useState<{ x: number; y: number; fecha: string; estado: string } | null>(null);
 
-// 🔥 Tiempo real Firestore
-useEffect(() => {
-  const q = query(
-    collection(db, "eventos"),
-    orderBy("hora", "asc")
-  );
 
-  const unsub = onSnapshot(q, (snapshot) => {
-    const arr = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        estado: data.estado === "MARCHA" ? "MARCHA" : "PARO",
-        hora: String(data.hora),
-      };
-    });
 
-    arr.sort((a, b) => new Date(a.hora).getTime() - new Date(b.hora).getTime());
-    setEvents(arr);
-  });
-
-  return () => unsub();
-}, []);
 
 
 
@@ -493,7 +471,7 @@ const exportCSV = () => {
               {estadoX1 ?? 'NULL'}
             </Typography>
             <Typography sx={{ fontSize: '0.70rem', my: 0.5}}>
-              {new Date(safeX1 - 60*60*1000).toLocaleString('es-ES', {
+              {new Date(safeX1).toLocaleString('es-ES', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -508,7 +486,7 @@ const exportCSV = () => {
               {estadoX2 ?? 'NULL'}
             </Typography>
             <Typography sx={{ fontSize: '0.70rem', my: 0.5 }}>
-              {new Date(safeX2 - 60*60*1000).toLocaleString('es-ES', {
+              {new Date(safeX2).toLocaleString('es-ES', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -575,13 +553,13 @@ const exportCSV = () => {
 
     <Box sx={{ ml: 3 }}>
   <Typography sx={{ fontWeight: 500, color: 'black' }}>
-    {estadoX1 ?? 'NULL'} | {new Date(safeX1 - 60*60*1000).toLocaleString('es-ES', {
+    {estadoX1 ?? 'NULL'} | {new Date(safeX1).toLocaleString('es-ES', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     })}
   </Typography>
   <Typography sx={{ fontWeight: 500, color: 'red' }}>
-    {estadoX2 ?? 'NULL'} | {new Date(safeX2 - 60*60*1000).toLocaleString('es-ES', {
+    {estadoX2 ?? 'NULL'} | {new Date(safeX2).toLocaleString('es-ES', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     })}
@@ -619,7 +597,7 @@ const exportCSV = () => {
                       scale={xScale}
                       tickValues={tickValues}
                       tickFormat={(d) =>
-                        new Date((d as number) - (60 * 60 * 1000)).toLocaleTimeString('es-ES', {
+                        new Date(d as number).toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })
@@ -705,7 +683,7 @@ const exportCSV = () => {
                       setHover({
                         x: point.x,
                         y: point.y,
-                        fecha: new Date(msDate.getTime() - (60 * 60 * 1000)).toLocaleString('es-ES', {
+                        fecha: new Date(msDate.getTime()).toLocaleString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
@@ -778,7 +756,7 @@ const exportCSV = () => {
                 {ev.estado}
               </TableCell>
               <TableCell>
-                {new Date(new Date(ev.hora).getTime() - (60 * 60 * 1000)).toLocaleString('es-ES', {
+                {new Date(ev.hora).toLocaleString('es-ES', {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',

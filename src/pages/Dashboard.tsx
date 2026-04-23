@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '../lib/firebase';
 import {
   Box,
   Container,
@@ -21,6 +21,21 @@ import { Factory, Logout, ExpandMore, ArrowBackIos, ArrowForwardIos } from '@mui
 import { useLocation } from 'wouter';
 import dashboardImage from '../attached_assets/generated_images/Imagen_Dashboard.jpg';
 
+function formatearDuracion(totalSegundos: number) {
+  if (totalSegundos < 0) totalSegundos = 0;
+
+  const dias = Math.floor(totalSegundos / 86400);
+  totalSegundos %= 86400;
+
+  const horas = Math.floor(totalSegundos / 3600);
+  totalSegundos %= 3600;
+
+  const minutos = Math.floor(totalSegundos / 60);
+  const segundos = totalSegundos % 60;
+
+  return { dias, horas, minutos, segundos };
+}
+
 interface DashboardProps {
   onLogout: () => void;
 }
@@ -35,6 +50,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 // Tiempo real del panel industrial
 const [estadoActual, setEstadoActual] = useState<"MARCHA" | "PARO" | null>(null);
 const [ultimoCambio, setUltimoCambio] = useState<number | null>(null);
+const [tick, setTick] = useState(Date.now());
 
 // 🔥 Lista completa de eventos (para horas día/semana/mes)
 const [eventos, setEventos] = useState<any[]>([]);
@@ -42,33 +58,33 @@ const [eventos, setEventos] = useState<any[]>([]);
 // ---------------------------------------------
 // 🔥 Función para calcular horas día/semana/mes
 // ---------------------------------------------
-function calcularHorasEnMarcha(eventos: any[], inicio: number, fin: number) {
+function calcularHorasEnMarcha(eventos, inicio, fin) {
   let total = 0;
+  let enMarcha = false;
+  let inicioTramo = null;
 
-  for (let i = 0; i < eventos.length - 1; i++) {
-    const e1 = eventos[i];
-    const e2 = eventos[i + 1];
+  for (const ev of eventos) {
+    const t = ev.hora;
 
-    if (e1.estado === "MARCHA") {
-      const desde = Math.max(e1.hora, inicio);
-      const hasta = Math.min(e2.hora, fin);
+    if (t < inicio) continue;
+    if (t > fin) break;
 
-      if (hasta > desde) {
-        total += hasta - desde;
-      }
+    if (ev.estado === "MARCHA") {
+      enMarcha = true;
+      inicioTramo = t;
+    } else if (ev.estado === "PARO" && enMarcha) {
+      total += (t - inicioTramo);
+      enMarcha = false;
+      inicioTramo = null;
     }
   }
 
-  const ultimo = eventos[eventos.length - 1];
-  if (ultimo && ultimo.estado === "MARCHA") {
-    const desde = Math.max(ultimo.hora, inicio);
-    const hasta = fin;
-    if (hasta > desde) {
-      total += hasta - desde;
-    }
+  // Si sigue en marcha, sumar solo el tramo actual
+  if (enMarcha && inicioTramo !== null) {
+    total += (fin - inicioTramo);
   }
 
-  return total / 3600000;
+  return total / 3600000; // horas
 }
 
 useEffect(() => {
@@ -82,7 +98,7 @@ useEffect(() => {
       const data = doc.data();
       return {
         estado: data.estado,
-        hora: new Date(data.hora).getTime(),
+        hora: data.hora.toMillis() - 2*60*60*1000,   // CAMBIO: corregir UTC+2
       };
     });
 
@@ -99,14 +115,11 @@ useEffect(() => {
 
 useEffect(() => {
   const interval = setInterval(() => {
-    if (ultimoCambio) {
-      // Fuerza un re-render para actualizar el contador
-      setUltimoCambio((prev) => prev);
-    }
+    setTick(Date.now());
   }, 1000);
 
   return () => clearInterval(interval);
-}, [ultimoCambio]);
+}, []);
 
 // ---------------------------------------------
 // 🔥 Cálculo de horas día / semana / mes
@@ -127,9 +140,17 @@ const inicioMes = new Date();
 inicioMes.setDate(1);
 inicioMes.setHours(0, 0, 0, 0);
 
-const horasDia = calcularHorasEnMarcha(eventos, inicioDia.getTime(), ahora);
-const horasSemana = calcularHorasEnMarcha(eventos, inicioSemana.getTime(), ahora);
-const horasMes = calcularHorasEnMarcha(eventos, inicioMes.getTime(), ahora);
+const horasDia = calcularHorasEnMarcha(eventos, inicioDia.getTime(), Date.now());
+const horasSemana = calcularHorasEnMarcha(eventos, inicioSemana.getTime(), Date.now());
+const horasMes = calcularHorasEnMarcha(eventos, inicioMes.getTime(), Date.now());
+
+const segundosDia = Math.floor(horasDia * 3600);
+const segundosSemana = Math.floor(horasSemana * 3600);
+const segundosMes = Math.floor(horasMes * 3600);
+
+const prodDia = formatearDuracion(segundosDia);
+const prodSemana = formatearDuracion(segundosSemana);
+const prodMes = formatearDuracion(segundosMes);
 
 
   const machines = [
@@ -336,14 +357,16 @@ const horasMes = calcularHorasEnMarcha(eventos, inicioMes.getTime(), ahora);
 {/* 🔥 Panel industrial a la derecha */}
 <Box
   sx={{
-    width: { xs: '100%', md: '280px' },
-    backgroundColor: 'white',
-    borderRadius: 2,
-    padding: 2,
-    boxShadow: 3,
+    width: { xs: '100%', md: '340px' },
+    minHeight: '420px',
+    backgroundColor: '#f2f2f2',               // gris industrial
+    borderRadius: '8px',
+    padding: 3,
+    boxShadow: '0 0 0 2px #c9c9c9, 0 4px 20px rgba(0,0,0,0.2)', // borde metálico + sombra
+    border: '2px solid #d1d1d1',             // borde más marcado
     display: 'flex',
     flexDirection: 'column',
-    gap: 2,
+    gap: 3,
   }}
 >
   <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -366,34 +389,38 @@ const horasMes = calcularHorasEnMarcha(eventos, inicioMes.getTime(), ahora);
     }}
   />
 
-  {/* Estado actual */}
-  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-    Estado:{" "}
-    <span style={{ color: estadoActual === "MARCHA" ? "#00c853" : "#d50000" }}>
-      {estadoActual ?? "Cargando..."}
-    </span>
-  </Typography>
-
-  {/* Contador en vivo */}
-  <Typography variant="body2">
-    Tiempo desde último cambio:
-    <br />
-    {ultimoCambio
-      ? `${Math.floor((Date.now() - ultimoCambio) / 1000)} segundos`
-      : "Cargando..."}
-  </Typography>
-
-{/* Horas acumuladas */}
-<Typography variant="body2">
-  Horas hoy: {horasDia.toFixed(2)}
+{/* Estado actual */}
+<Typography sx={{ fontSize: "1.1rem", fontWeight: 600 }}>
+  Estado:{" "}
+  <span style={{ color: estadoActual === "MARCHA" ? "#00c853" : "#d50000" }}>
+    {estadoActual ?? "Cargando..."}
+  </span>
 </Typography>
 
-<Typography variant="body2">
-  Horas semana: {horasSemana.toFixed(2)}
+{/* Contador en vivo */}
+<Typography sx={{ fontSize: "1rem", mt: 1 }}>
+  Tiempo desde último cambio:
+  <br />
+  {ultimoCambio ? (() => {
+    const tiempoSegundos = Math.floor((tick - ultimoCambio) / 1000);
+    const { dias, horas, minutos, segundos } = formatearDuracion(tiempoSegundos);
+    return `${dias}d ${horas}h ${minutos}m ${segundos}s`;
+  })() : "Cargando..."}
 </Typography>
 
-<Typography variant="body2">
-  Horas mes: {horasMes.toFixed(2)}
+{/* Producción diaria */}
+<Typography sx={{ fontSize: "1rem", mt: 2 }}>
+  Producción diaria: {prodDia.dias}d {prodDia.horas}h {prodDia.minutos}m {prodDia.segundos}s
+</Typography>
+
+{/* Producción semanal */}
+<Typography sx={{ fontSize: "1rem" }}>
+  Producción semanal: {prodSemana.dias}d {prodSemana.horas}h {prodSemana.minutos}m {prodSemana.segundos}s
+</Typography>
+
+{/* Producción mensual */}
+<Typography sx={{ fontSize: "1rem" }}>
+  Producción mensual: {prodMes.dias}d {prodMes.horas}h {prodMes.minutos}m {prodMes.segundos}s
 </Typography>
 
 
